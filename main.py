@@ -43,18 +43,15 @@ OPEN_BROWSER = os.environ.get("OPEN_BROWSER", "1").strip().lower() not in {
 }
 CHECK_INTERVAL_SECONDS = 60 * 60
 MAX_SEARCH_RESULTS = 50
-HTTP_TIMEOUT_SECONDS = 8
-STORE_SCAN_TIMEOUT_SECONDS = 6
+HTTP_TIMEOUT_SECONDS = 12
+STORE_SCAN_TIMEOUT_SECONDS = 36
 DEFAULT_SCAN_DEPTH = 3
 MAX_SCAN_DEPTH = 10
 MAX_CONCURRENT_REQUESTS = 2
 HTTP_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8",
+    "User-Agent": "IndirimRadari/1.0",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
 }
 ALL_STORES = "all"
 ALL_FILTERS = "Tümünü Seç"
@@ -445,6 +442,7 @@ FALLBACK_RESULT_CARD_SELECTORS = (
 )
 FALLBACK_PRICE_SELECTORS = (
     '[class*="price"]',
+    '[class*="fiyat"]',
     '[data-testid*="price"]',
     '[data-test-id*="price"]',
     '[itemprop="price"]',
@@ -989,12 +987,21 @@ def load_offers():
 
 def _price_from_card(card, store):
     prices = []
-    selectors = tuple(STORE_CONFIGS[store]["prices"]) + FALLBACK_PRICE_SELECTORS
+    selectors = (
+        tuple(STORE_CONFIGS[store]["prices"])
+        + FALLBACK_PRICE_SELECTORS
+        + ("span", "div")
+    )
     for selector in dict.fromkeys(selectors):
-        for element in card.select(selector)[:5]:
+        for element in card.select(selector)[:50]:
             text = element.get_text("\n", strip=True)
             if text:
-                prices.extend(_prices_from_element_text(text))
+                prices.extend(
+                    _prices_from_element_text(
+                        text,
+                        allow_bare=selector in STORE_CONFIGS[store]["prices"],
+                    )
+                )
             if not text:
                 price = parse_price(element.get("content", ""), allow_bare=True)
                 if price is not None:
@@ -1013,17 +1020,36 @@ def _product_from_card(card, store, search_url):
     for selector in RESULT_CARD_TITLE_SELECTORS:
         heading = card.select_one(selector)
         if heading:
-            title = heading.get_text(" ", strip=True)
+            title = (
+                heading.get_text(" ", strip=True)
+                or heading.get("title")
+                or heading.get("aria-label")
+                or heading.get("alt")
+                or ""
+            ).strip()
             link = heading if heading.name == "a" else heading.select_one("a")
             break
     if link is None:
         if card.name == "a":
             link = card
         else:
-            link = card.select_one('a[href*="/dp/"]') or card.select_one("a[href]")
+            link = (
+                card.select_one('a[href*="/dp/"]')
+                or card.select_one("a[href][title]")
+                or card.select_one("a[href][aria-label]")
+                or card.select_one("a[href]")
+            )
     href = link.get("href") if link else None
     if not title and link:
-        title = link.get_text(" ", strip=True)
+        title = (
+            link.get_text(" ", strip=True)
+            or link.get("title")
+            or link.get("aria-label")
+            or ""
+        ).strip()
+        if not title:
+            image = link.select_one("img[alt]")
+            title = image.get("alt", "").strip() if image else ""
 
     product_url = urljoin(search_url, href or "")
     parsed_url = urlsplit(product_url)
