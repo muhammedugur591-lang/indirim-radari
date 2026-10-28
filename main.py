@@ -46,6 +46,17 @@ PAGE_LOAD_TIMEOUT_MS = 6000
 STORE_SCAN_TIMEOUT_SECONDS = 6
 DEFAULT_SCAN_DEPTH = 3
 MAX_SCAN_DEPTH = 10
+MAX_CONCURRENT_BROWSERS = 2
+CHROMIUM_LAUNCH_ARGS = [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-accelerated-2d-canvas",
+    "--no-first-run",
+    "--no-zygote",
+    "--single-process",
+    "--disable-gpu",
+]
 ALL_STORES = "all"
 ALL_FILTERS = "Tümünü Seç"
 PRICE_HISTORY_LIMIT = 250
@@ -84,6 +95,7 @@ OFFERS_LOCK = threading.RLock()
 OFFERS_CACHE_LOCK = threading.RLock()
 OFFERS_CACHE = None
 RADAR_SCAN_LOCK = threading.Lock()
+BROWSER_SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT_BROWSERS)
 SCAN_PROGRESS_LOCK = threading.RLock()
 SCAN_PROGRESS = {
     "active": False,
@@ -779,9 +791,16 @@ def check_price(url, target_price):
         (name for name, config in STORE_CONFIGS.items() if config["domain"] in hostname),
         None,
     )
+    browser_slot_acquired = False
     try:
+        BROWSER_SEMAPHORE.acquire()
+        browser_slot_acquired = True
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True)
+            browser = playwright.chromium.launch(
+                headless=True,
+                args=CHROMIUM_LAUNCH_ARGS,
+            )
+            context = None
             try:
                 context = browser.new_context(
                     user_agent=(
@@ -806,7 +825,11 @@ def check_price(url, target_price):
                 current_price = extract_price(page, store)
                 image_url = _product_image_url(page)
             finally:
-                browser.close()
+                try:
+                    if context is not None:
+                        context.close()
+                finally:
+                    browser.close()
     except Exception as error:
         message = f"Fiyat kontrolü başarısız: {error}"
         print(f"❌ {message}", flush=True)
@@ -816,6 +839,9 @@ def check_price(url, target_price):
             "image_url": None,
             "message": message,
         }
+    finally:
+        if browser_slot_acquired:
+            BROWSER_SEMAPHORE.release()
 
     if current_price is None:
         message = "Sayfada okunabilir bir ürün fiyatı bulunamadı."
@@ -1190,10 +1216,17 @@ def _search_radar(radar):
         )
     except (TypeError, ValueError, OverflowError):
         scan_depth = DEFAULT_SCAN_DEPTH
+    browser_slot_acquired = False
     try:
+        BROWSER_SEMAPHORE.acquire()
+        browser_slot_acquired = True
         with sync_playwright() as playwright:
             store_deadline = time.monotonic() + STORE_SCAN_TIMEOUT_SECONDS
-            browser = playwright.chromium.launch(headless=True)
+            browser = playwright.chromium.launch(
+                headless=True,
+                args=CHROMIUM_LAUNCH_ARGS,
+            )
+            context = None
             try:
                 context = browser.new_context(
                     user_agent=(
@@ -1359,11 +1392,18 @@ def _search_radar(radar):
                     print(f"[WARN] {message}", flush=True)
                 return products, " ".join(errors) or None
             finally:
-                browser.close()
+                try:
+                    if context is not None:
+                        context.close()
+                finally:
+                    browser.close()
     except Exception as error:
         message = f"{store} araması başarısız: {error}"
         print(f"❌ {message}", flush=True)
         return [], message
+    finally:
+        if browser_slot_acquired:
+            BROWSER_SEMAPHORE.release()
 
 
 def _selected_stores(radar):
@@ -1480,7 +1520,9 @@ def _search_radar_stores(radar, stores=None, on_store_complete=None):
     ):
         raise ValueError("Tarama mağazaları seçili mağaza listesiyle uyuşmuyor.")
     allowed_stores = frozenset(selected_stores)
-    with ThreadPoolExecutor(max_workers=len(stores)) as executor:
+    with ThreadPoolExecutor(
+        max_workers=min(len(stores), MAX_CONCURRENT_BROWSERS)
+    ) as executor:
         futures = {
             executor.submit(
                 _search_radar,
@@ -2247,13 +2289,21 @@ def get_products():
 
 @app.get("/api/scan-progress")
 def get_scan_progress():
-    with SCAN_PROGRESS_LOCK:
-        return {
-            **SCAN_PROGRESS,
-            "completed_stores": list(SCAN_PROGRESS["completed_stores"]),
-            "pending_stores": list(SCAN_PROGRESS["pending_stores"]),
-            "products": [dict(product) for product in SCAN_PROGRESS["products"]],
-        }
+    try:
+        with SCAN_PROGRESS_LOCK:
+            return {
+                **SCAN_PROGRESS,
+                "completed_stores": list(SCAN_PROGRESS["completed_stores"]),
+                "pending_stores": list(SCAN_PROGRESS["pending_stores"]),
+                "products": [dict(product) for product in SCAN_PROGRESS["products"]],
+            }
+    except Exception as error:
+        message = str(error)
+        print(f"❌ Tarama durumu alınamadı: {message}", flush=True)
+        return JSONResponse(
+            status_code=200,
+            content={"status": "error", "message": message},
+        )
 
 
 @app.get("/api/radars")
@@ -2308,6 +2358,13 @@ def search_offers(request: Request):
         raise HTTPException(status_code=400, detail=str(error)) from error
     except RuntimeError as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
+    except Exception as error:
+        message = str(error)
+        print(f"❌ Ürün araması başarısız: {message}", flush=True)
+        return JSONResponse(
+            status_code=200,
+            content={"status": "error", "message": message},
+        )
 
 
 @app.get("/")
