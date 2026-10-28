@@ -1,6 +1,9 @@
-﻿import json
+﻿import os
+
+os.environ["PLAYWRIGHT_BROWSERS_PATH"] = "0"
+
+import json
 import math
-import os
 import re
 import threading
 import time
