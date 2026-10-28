@@ -35,11 +35,6 @@ from playwright.sync_api import sync_playwright
 
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "8000"))
-CORS_ALLOWED_ORIGINS = {
-    origin.strip()
-    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "*").split(",")
-    if origin.strip()
-}
 OPEN_BROWSER = os.environ.get("OPEN_BROWSER", "1").strip().lower() not in {
     "0",
     "false",
@@ -2176,9 +2171,8 @@ async def lifespan(_application):
 app = FastAPI(title="İndirim Radarı API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=(
-        ["*"] if "*" in CORS_ALLOWED_ORIGINS else sorted(CORS_ALLOWED_ORIGINS)
-    ),
+    allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type"],
 )

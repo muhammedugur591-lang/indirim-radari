@@ -394,7 +394,18 @@
         ...options,
         headers: { "Content-Type": "application/json", ...options.headers }
       });
-      const data = await response.json();
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.toLowerCase().includes("application/json")) {
+        throw new Error(
+          `API JSON yerine beklenmeyen bir yanıt verdi (${response.status}). Render API adresini kontrol edin.`
+        );
+      }
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error("API geçerli bir JSON yanıtı döndürmedi.");
+      }
       if (!response.ok) throw new Error(data.detail || data.error || `Sunucu hatası (${response.status}).`);
       return data;
     }

@@ -13,7 +13,5 @@ services:
         value: 0.0.0.0
       - key: OPEN_BROWSER
         value: "0"
-      - key: CORS_ALLOWED_ORIGINS
-        value: "*"
       - key: PYTHONUNBUFFERED
         value: "1"
