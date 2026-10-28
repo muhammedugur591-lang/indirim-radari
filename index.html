@@ -287,7 +287,7 @@
             <div class="feed-heading"><h2>Bulunan fırsatlar</h2><span class="pill-count" id="offerBadge">0</span></div>
             <p class="panel-caption">Bütçenin altında bulunan güncel ürünler.</p>
             <div class="offer-search">
-              <input id="offerSearch" type="search" placeholder="Önbellekte ürün veya mağaza ara" aria-label="Önbellekte fırsat ara">
+              <input id="offerSearch" type="search" placeholder="Ürün veya mağaza ara" aria-label="Ürün veya mağaza ara">
               <input id="offerSearchMin" type="text" inputmode="decimal" placeholder="Min TL" aria-label="En düşük fiyat filtresi">
               <input id="offerSearchMax" type="text" inputmode="decimal" placeholder="Maks. TL" aria-label="En yüksek fiyat filtresi">
               <p class="form-status" id="offerSearchStatus" role="status" aria-live="polite"></p>
@@ -377,9 +377,8 @@
     let radarEditSnapshot = null;
     let radarEditSaved = false;
     let rangeStates = new Map();
-    let cachedSearchResults = null;
-    let cachedSearchRequest = 0;
-    let cachedSearchTimer = null;
+    let offerSearchResults = null;
+    let offerSearchRequest = 0;
     const paginationState = { products: 1, offers: 1 };
     let selectedFilters = {
       features: [],
@@ -453,7 +452,7 @@
     const offerSearchStatus = document.querySelector("#offerSearchStatus");
     [offerSearchMinInput, offerSearchMaxInput].forEach(formatPriceInput);
 
-    function hasCachedSearchFilters() {
+    function hasOfferSearchFilters() {
       return Boolean(
         offerSearchInput.value.trim()
         || offerSearchMinInput.value.trim()
@@ -461,10 +460,10 @@
       );
     }
 
-    async function refreshCachedSearch() {
-      const requestNumber = ++cachedSearchRequest;
-      if (!hasCachedSearchFilters()) {
-        cachedSearchResults = null;
+    async function refreshOfferSearch() {
+      const requestNumber = ++offerSearchRequest;
+      if (!hasOfferSearchFilters()) {
+        offerSearchResults = null;
         offerSearchStatus.textContent = "";
         renderOffersWithProgress();
         return;
@@ -486,71 +485,30 @@
       if (minPrice !== null) params.set("min_price", String(minPrice));
       if (maxPrice !== null) params.set("max_price", String(maxPrice));
       if (query) params.set("q", query);
-      cachedSearchResults = [];
+      offerSearchResults = [];
       offerSearchStatus.removeAttribute("data-error");
-      offerSearchStatus.textContent = "Önbellekte aranıyor...";
-      const searchPath = `/api/search?${params.toString()}`;
+      offerSearchStatus.textContent = "Ürünler aranıyor...";
       try {
-        let isRefreshing = false;
-        const results = await requestJson(searchPath, {}, (response) => {
-          isRefreshing = response.headers.get("X-Product-Cache-Refreshing") === "true";
-        });
-        if (requestNumber !== cachedSearchRequest) return;
-        cachedSearchResults = results.filter(
+        const results = await requestJson(`/api/search?${params.toString()}`);
+        if (requestNumber !== offerSearchRequest) return;
+        offerSearchResults = results.filter(
           (offer) => !pendingDeletedItems.has(`radar:${offer.radar_id}`)
         );
-        offerSearchStatus.textContent = isRefreshing
-          ? `${cachedSearchResults.length} önbellek fırsatı bulundu; mağazalar arka planda taranıyor.`
-          : `${cachedSearchResults.length} önbellek fırsatı bulundu.`;
+        offerSearchStatus.textContent = `${offerSearchResults.length} fırsat bulundu.`;
         paginationState.offers = 1;
         renderOffersWithProgress();
-        if (isRefreshing) {
-          void refreshCachedSearchInBackground(requestNumber, searchPath);
-        }
       } catch (error) {
-        if (requestNumber !== cachedSearchRequest) return;
-        cachedSearchResults = [];
-        offerSearchStatus.textContent = `Önbellek araması başarısız: ${error.message}`;
+        if (requestNumber !== offerSearchRequest) return;
+        offerSearchResults = [];
+        offerSearchStatus.textContent = `Arama başarısız: ${error.message}`;
         offerSearchStatus.dataset.error = "true";
         renderOffersWithProgress();
       }
     }
 
-    async function refreshCachedSearchInBackground(requestNumber, searchPath) {
-      for (let attempt = 0; attempt < 20; attempt += 1) {
-        await new Promise((resolve) => window.setTimeout(resolve, 1000));
-        if (requestNumber !== cachedSearchRequest) return;
-        try {
-          let isRefreshing = false;
-          const results = await requestJson(searchPath, {}, (response) => {
-            isRefreshing = response.headers.get("X-Product-Cache-Refreshing") === "true";
-          });
-          if (requestNumber !== cachedSearchRequest) return;
-          cachedSearchResults = results.filter(
-            (offer) => !pendingDeletedItems.has(`radar:${offer.radar_id}`)
-          );
-          offerSearchStatus.textContent = isRefreshing
-            ? `${cachedSearchResults.length} önbellek fırsatı bulundu; mağazalar arka planda taranıyor.`
-            : `${cachedSearchResults.length} önbellek fırsatı bulundu.`;
-          if (!isRefreshing) paginationState.offers = 1;
-          renderOffersWithProgress();
-          if (!isRefreshing) return;
-        } catch (error) {
-          offerSearchStatus.textContent = `Önbellek yenilemesi başarısız: ${error.message}`;
-          offerSearchStatus.dataset.error = "true";
-          return;
-        }
-      }
-    }
-
-    function scheduleCachedSearch() {
-      window.clearTimeout(cachedSearchTimer);
-      cachedSearchTimer = window.setTimeout(refreshCachedSearch, 180);
-    }
-
-    offerSearchInput.addEventListener("input", scheduleCachedSearch);
-    offerSearchMinInput.addEventListener("input", scheduleCachedSearch);
-    offerSearchMaxInput.addEventListener("input", scheduleCachedSearch);
+    offerSearchInput.addEventListener("input", refreshOfferSearch);
+    offerSearchMinInput.addEventListener("input", refreshOfferSearch);
+    offerSearchMaxInput.addEventListener("input", refreshOfferSearch);
 
     function setFormStatus(element, message, isError = false) {
       element.textContent = message;
@@ -1012,12 +970,12 @@
       notifiedShockAlerts.clear();
       rangeStates.clear();
       dashboardOffers = [];
-      cachedSearchResults = null;
+      offerSearchResults = null;
       offerSearchInput.value = "";
       offerSearchMinInput.value = "";
       offerSearchMaxInput.value = "";
       offerSearchStatus.textContent = "";
-      cachedSearchRequest += 1;
+      offerSearchRequest += 1;
       currentScanProgress = null;
       lastProgressSignature = "";
       localStorage.clear();
@@ -1167,8 +1125,8 @@
         renderPagination("offerPagination", 0, 1, () => {});
         list.append(createEmpty(
           "✦",
-          hasCachedSearchFilters() ? "Eşleşen fırsat yok" : "Henüz fırsat yok",
-          hasCachedSearchFilters()
+          hasOfferSearchFilters() ? "Eşleşen fırsat yok" : "Henüz fırsat yok",
+          hasOfferSearchFilters()
             ? "Arama veya fiyat aralığını değiştirip tekrar deneyebilirsin."
             : "Bütçe altında eşleşme bulunduğunda burada görünecek."
         ));
@@ -1239,8 +1197,8 @@
     }
 
     function renderOffersWithProgress() {
-      if (cachedSearchResults !== null) {
-        renderOffers(cachedSearchResults);
+      if (offerSearchResults !== null) {
+        renderOffers(offerSearchResults);
         return;
       }
       const offers = [...dashboardOffers];
@@ -1311,10 +1269,10 @@
       renderProducts(visibleProducts);
       renderRadars(visibleRadars);
       dashboardOffers = visibleOffers;
-      if (hasCachedSearchFilters()) {
-        void refreshCachedSearch();
+      if (hasOfferSearchFilters()) {
+        void refreshOfferSearch();
       } else {
-        cachedSearchResults = null;
+        offerSearchResults = null;
         renderOffersWithProgress();
       }
       connection.dataset.online = "true";
