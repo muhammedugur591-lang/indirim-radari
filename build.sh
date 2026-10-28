@@ -6,4 +6,3 @@ export PLAYWRIGHT_BROWSERS_PATH=0
 
 pip install -r requirements.txt
 playwright install chromium
-playwright install-deps chromium

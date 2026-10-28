@@ -29,7 +29,7 @@ from urllib.parse import (
 )
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -97,6 +97,12 @@ RADARS_LOCK = threading.RLock()
 OFFERS_LOCK = threading.RLock()
 OFFERS_CACHE_LOCK = threading.RLock()
 OFFERS_CACHE = None
+PRODUCT_CACHE = {}
+PRODUCT_CACHE_UPDATED_AT = {}
+PRODUCT_CACHE_PENDING = set()
+PRODUCT_CACHE_LOCK = threading.RLock()
+PRODUCT_CACHE_TTL_SECONDS = 300
+PRODUCT_CACHE_MAX_ENTRIES = 100
 RADAR_SCAN_LOCK = threading.Lock()
 BROWSER_SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT_BROWSERS)
 SCAN_PROGRESS_LOCK = threading.RLock()
@@ -1004,6 +1010,9 @@ def _save_json_list(path, entries, lock):
     if path == OFFERS_FILE:
         with OFFERS_CACHE_LOCK:
             OFFERS_CACHE = deepcopy(entries)
+        with PRODUCT_CACHE_LOCK:
+            PRODUCT_CACHE.clear()
+            PRODUCT_CACHE_UPDATED_AT.clear()
 
 
 def load_radars():
@@ -1587,6 +1596,121 @@ def search_cached_offers(query="", min_price=None, max_price=None, stores=None):
         matching.append(offer)
     matching.sort(key=lambda offer: offer["price"])
     return matching
+
+
+def _product_cache_key(query, min_price, max_price, stores):
+    normalized_query = _normalized_filter_text(query.strip()) if query else ""
+    return (
+        normalized_query,
+        min_price,
+        max_price,
+        tuple(sorted(stores or ())),
+    )
+
+
+def _refresh_product_cache(cache_key, query, min_price, max_price, stores):
+    try:
+        selected_stores = stores or list(STORE_CONFIGS)
+        radar = {
+            "query": query,
+            "store": selected_stores[0],
+            "stores": selected_stores,
+            "scan_depth": 1,
+        }
+        products, errors = _search_radar_stores(radar, selected_stores)
+        cached_offers = search_cached_offers(
+            query,
+            min_price,
+            max_price,
+            selected_stores,
+        )
+        by_url = {offer.get("url"): offer for offer in cached_offers}
+        checked_at = datetime.now().astimezone().isoformat(timespec="milliseconds")
+        query_terms = cache_key[0].split()
+        for product in products:
+            price = product.get("price")
+            if (
+                not isinstance(price, (int, float))
+                or not math.isfinite(price)
+                or (min_price is not None and price < min_price)
+                or (max_price is not None and price > max_price)
+            ):
+                continue
+            searchable_text = _normalized_filter_text(
+                f"{product.get('title', '')} {product.get('store', '')}"
+            )
+            if not all(term in searchable_text for term in query_terms):
+                continue
+            previous = by_url.get(product["url"], {})
+            by_url[product["url"]] = {
+                **previous,
+                **product,
+                "id": previous.get("id")
+                or str(uuid.uuid5(uuid.NAMESPACE_URL, product["url"])),
+                "query": previous.get("query") or query,
+                "min_price": min_price or 0,
+                "max_price": max_price or 0,
+                "active": True,
+                "last_seen": checked_at,
+                "provisional": not bool(previous),
+            }
+        refreshed = sorted(by_url.values(), key=lambda offer: offer["price"])
+        with PRODUCT_CACHE_LOCK:
+            PRODUCT_CACHE[cache_key] = refreshed
+            PRODUCT_CACHE_UPDATED_AT[cache_key] = time.monotonic()
+            while len(PRODUCT_CACHE) > PRODUCT_CACHE_MAX_ENTRIES:
+                oldest_key = next(iter(PRODUCT_CACHE))
+                PRODUCT_CACHE.pop(oldest_key, None)
+                PRODUCT_CACHE_UPDATED_AT.pop(oldest_key, None)
+        if errors:
+            print(
+                f"Arka plan ürün araması bazı mağazalarda başarısız: {' '.join(errors)}",
+                flush=True,
+            )
+    except Exception as error:
+        print(f"Arka plan ürün araması başarısız: {error}", flush=True)
+        with PRODUCT_CACHE_LOCK:
+            PRODUCT_CACHE_UPDATED_AT[cache_key] = time.monotonic()
+    finally:
+        with PRODUCT_CACHE_LOCK:
+            PRODUCT_CACHE_PENDING.discard(cache_key)
+
+
+def get_cached_product_search(background_tasks, query, min_price, max_price, stores):
+    cache_key = _product_cache_key(query, min_price, max_price, stores)
+    now = time.monotonic()
+    with PRODUCT_CACHE_LOCK:
+        cached = PRODUCT_CACHE.get(cache_key)
+        updated_at = PRODUCT_CACHE_UPDATED_AT.get(cache_key, 0)
+        should_refresh = (
+            bool(cache_key[0])
+            and (
+                cached is None
+                or now - updated_at >= PRODUCT_CACHE_TTL_SECONDS
+            )
+            and cache_key not in PRODUCT_CACHE_PENDING
+        )
+        if should_refresh:
+            PRODUCT_CACHE_PENDING.add(cache_key)
+    if cached is None:
+        cached = search_cached_offers(query, min_price, max_price, stores)
+        with PRODUCT_CACHE_LOCK:
+            PRODUCT_CACHE[cache_key] = deepcopy(cached)
+            PRODUCT_CACHE_UPDATED_AT[cache_key] = 0
+            while len(PRODUCT_CACHE) > PRODUCT_CACHE_MAX_ENTRIES:
+                oldest_key = next(iter(PRODUCT_CACHE))
+                PRODUCT_CACHE.pop(oldest_key, None)
+                PRODUCT_CACHE_UPDATED_AT.pop(oldest_key, None)
+    if should_refresh:
+        background_tasks.add_task(
+            _refresh_product_cache,
+            cache_key,
+            query,
+            min_price,
+            max_price,
+            stores,
+        )
+    return deepcopy(cached)
 
 
 def _radar_query_from_selection(payload):
@@ -2220,6 +2344,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type"],
+    expose_headers=["X-Product-Cache-Refreshing"],
 )
 
 
@@ -2326,7 +2451,11 @@ def get_offers():
 
 
 @app.get("/api/search")
-def search_offers(request: Request):
+def search_offers(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    response: Response,
+):
     query = request.query_params.get("q", "")
     try:
         min_price = (
@@ -2356,7 +2485,19 @@ def search_offers(request: Request):
             and min_price > max_price
         ):
             raise ValueError("Minimum fiyat maksimum fiyattan büyük olamaz.")
-        return search_cached_offers(query, min_price, max_price, stores)
+        results = get_cached_product_search(
+            background_tasks,
+            query,
+            min_price,
+            max_price,
+            stores,
+        )
+        cache_key = _product_cache_key(query, min_price, max_price, stores)
+        with PRODUCT_CACHE_LOCK:
+            response.headers["X-Product-Cache-Refreshing"] = str(
+                cache_key in PRODUCT_CACHE_PENDING
+            ).lower()
+        return results
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except RuntimeError as error:

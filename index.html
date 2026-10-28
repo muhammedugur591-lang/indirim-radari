@@ -389,11 +389,12 @@
     };
     let historyChart = null;
 
-    async function requestJson(path, options = {}) {
+    async function requestJson(path, options = {}, onResponse = null) {
       const response = await fetch(`${API_BASE_URL}${path}`, {
         ...options,
         headers: { "Content-Type": "application/json", ...options.headers }
       });
+      if (onResponse) onResponse(response);
       const contentType = response.headers.get("content-type") || "";
       if (!contentType.toLowerCase().includes("application/json")) {
         throw new Error(
@@ -488,21 +489,57 @@
       cachedSearchResults = [];
       offerSearchStatus.removeAttribute("data-error");
       offerSearchStatus.textContent = "Önbellekte aranıyor...";
+      const searchPath = `/api/search?${params.toString()}`;
       try {
-        const results = await requestJson(`/api/search?${params.toString()}`);
+        let isRefreshing = false;
+        const results = await requestJson(searchPath, {}, (response) => {
+          isRefreshing = response.headers.get("X-Product-Cache-Refreshing") === "true";
+        });
         if (requestNumber !== cachedSearchRequest) return;
         cachedSearchResults = results.filter(
           (offer) => !pendingDeletedItems.has(`radar:${offer.radar_id}`)
         );
-        offerSearchStatus.textContent = `${cachedSearchResults.length} önbellek fırsatı bulundu.`;
+        offerSearchStatus.textContent = isRefreshing
+          ? `${cachedSearchResults.length} önbellek fırsatı bulundu; mağazalar arka planda taranıyor.`
+          : `${cachedSearchResults.length} önbellek fırsatı bulundu.`;
         paginationState.offers = 1;
         renderOffersWithProgress();
+        if (isRefreshing) {
+          void refreshCachedSearchInBackground(requestNumber, searchPath);
+        }
       } catch (error) {
         if (requestNumber !== cachedSearchRequest) return;
         cachedSearchResults = [];
         offerSearchStatus.textContent = `Önbellek araması başarısız: ${error.message}`;
         offerSearchStatus.dataset.error = "true";
         renderOffersWithProgress();
+      }
+    }
+
+    async function refreshCachedSearchInBackground(requestNumber, searchPath) {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        if (requestNumber !== cachedSearchRequest) return;
+        try {
+          let isRefreshing = false;
+          const results = await requestJson(searchPath, {}, (response) => {
+            isRefreshing = response.headers.get("X-Product-Cache-Refreshing") === "true";
+          });
+          if (requestNumber !== cachedSearchRequest) return;
+          cachedSearchResults = results.filter(
+            (offer) => !pendingDeletedItems.has(`radar:${offer.radar_id}`)
+          );
+          offerSearchStatus.textContent = isRefreshing
+            ? `${cachedSearchResults.length} önbellek fırsatı bulundu; mağazalar arka planda taranıyor.`
+            : `${cachedSearchResults.length} önbellek fırsatı bulundu.`;
+          if (!isRefreshing) paginationState.offers = 1;
+          renderOffersWithProgress();
+          if (!isRefreshing) return;
+        } catch (error) {
+          offerSearchStatus.textContent = `Önbellek yenilemesi başarısız: ${error.message}`;
+          offerSearchStatus.dataset.error = "true";
+          return;
+        }
       }
     }
 
