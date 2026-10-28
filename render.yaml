@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: indirim-radari-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && playwright install --with-deps chromium
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.4
+      - key: HOST
+        value: 0.0.0.0
+      - key: OPEN_BROWSER
+        value: "0"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "*"
+      - key: PYTHONUNBUFFERED
+        value: "1"
