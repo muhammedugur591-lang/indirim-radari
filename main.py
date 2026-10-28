@@ -1,7 +1,5 @@
 ﻿import os
 
-os.environ["PLAYWRIGHT_BROWSERS_PATH"] = "0"
-
 import json
 import math
 import re
@@ -10,6 +8,8 @@ import time
 import unicodedata
 import uuid
 import webbrowser
+import httpx
+from bs4 import BeautifulSoup
 from copy import deepcopy
 from contextlib import asynccontextmanager
 from json import JSONDecodeError
@@ -32,8 +32,6 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-from playwright.sync_api import sync_playwright
 
 
 HOST = os.environ.get("HOST", "127.0.0.1")
@@ -45,17 +43,19 @@ OPEN_BROWSER = os.environ.get("OPEN_BROWSER", "1").strip().lower() not in {
 }
 CHECK_INTERVAL_SECONDS = 60 * 60
 MAX_SEARCH_RESULTS = 50
-PAGE_LOAD_TIMEOUT_MS = 6000
+HTTP_TIMEOUT_SECONDS = 8
 STORE_SCAN_TIMEOUT_SECONDS = 6
 DEFAULT_SCAN_DEPTH = 3
 MAX_SCAN_DEPTH = 10
-MAX_CONCURRENT_BROWSERS = 2
-CHROMIUM_LAUNCH_ARGS = [
-    "--no-sandbox",
-    "--disable-setuid-sandbox",
-    "--disable-dev-shm-usage",
-    "--single-process",
-]
+MAX_CONCURRENT_REQUESTS = 2
+HTTP_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8",
+}
 ALL_STORES = "all"
 ALL_FILTERS = "Tümünü Seç"
 PRICE_HISTORY_LIMIT = 250
@@ -92,7 +92,6 @@ CHECK_LOCK = threading.Lock()
 RADARS_LOCK = threading.RLock()
 OFFERS_LOCK = threading.RLock()
 RADAR_SCAN_LOCK = threading.Lock()
-BROWSER_SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT_BROWSERS)
 SCAN_PROGRESS_LOCK = threading.RLock()
 SCAN_PROGRESS = {
     "active": False,
@@ -578,7 +577,7 @@ def _prices_from_element_text(text, allow_bare=False):
     return prices
 
 
-def extract_price(page, store=None):
+def extract_price(soup, store=None):
     selectors = list(PRODUCT_SELECTORS)
     if store in STORE_CONFIGS:
         selectors = list(STORE_CONFIGS[store]["prices"]) + selectors
@@ -588,25 +587,16 @@ def extract_price(page, store=None):
         if selector in seen:
             continue
         seen.add(selector)
-        locator = page.locator(selector)
-        try:
-            count = min(locator.count(), 6)
-        except PlaywrightTimeoutError:
-            continue
-        for index in range(count):
-            element = locator.nth(index)
-            try:
-                if not element.is_visible(timeout=500):
-                    continue
-                if selector == 'meta[itemprop="price"]':
-                    value = element.get_attribute("content", timeout=500)
-                    price = parse_price(value or "", allow_bare=True)
-                    if price is not None:
-                        return price
-                text = element.inner_text(timeout=700).strip()
-            except PlaywrightTimeoutError:
-                continue
-            prices = _prices_from_element_text(text, allow_bare=selector in STORE_CONFIGS.get(store, {}).get("prices", ()))
+        for element in soup.select(selector)[:6]:
+            if selector == 'meta[itemprop="price"]':
+                price = parse_price(element.get("content", ""), allow_bare=True)
+                if price is not None:
+                    return price
+            text = element.get_text("\n", strip=True)
+            prices = _prices_from_element_text(
+                text,
+                allow_bare=selector in STORE_CONFIGS.get(store, {}).get("prices", ()),
+            )
             if prices:
                 return prices[-1]
     return None
@@ -628,19 +618,9 @@ def _http_image_url(value, page_url):
     return None
 
 
-def block_agressive_media(route, request):
-    if request.resource_type in ("image", "stylesheet", "font", "media"):
-        route.abort()
-    else:
-        route.continue_()
-
-
 def _image_url_from_element(image, page_url):
     for attribute in ("data-src", "data-lazy-src", "data-original", "src", "data-srcset", "srcset"):
-        try:
-            value = image.get_attribute(attribute, timeout=300)
-        except PlaywrightTimeoutError:
-            continue
+        value = image.get(attribute)
         image_url = _http_image_url(value, page_url)
         if image_url:
             return image_url
@@ -648,19 +628,14 @@ def _image_url_from_element(image, page_url):
 
 
 def _image_url_from_card(card, page_url):
-    images = card.locator("img")
-    try:
-        count = min(images.count(), 5)
-    except PlaywrightTimeoutError:
-        return None
-    for index in range(count):
-        image_url = _image_url_from_element(images.nth(index), page_url)
+    for image in card.select("img")[:5]:
+        image_url = _image_url_from_element(image, page_url)
         if image_url:
             return image_url
     return None
 
 
-def _product_image_url(page):
+def _product_image_url(soup, page_url):
     for selector in (
         'meta[property="og:image"]',
         'meta[name="twitter:image"]',
@@ -668,36 +643,22 @@ def _product_image_url(page):
         "main img",
         "img",
     ):
-        images = page.locator(selector)
-        try:
-            count = min(images.count(), 8)
-        except PlaywrightTimeoutError:
-            continue
-        for index in range(count):
-            image = images.nth(index)
+        for image in soup.select(selector)[:8]:
             if selector.startswith("meta["):
-                try:
-                    value = image.get_attribute("content", timeout=300)
-                except PlaywrightTimeoutError:
-                    continue
-                image_url = _http_image_url(value, page.url)
+                image_url = _http_image_url(image.get("content"), page_url)
                 if image_url:
                     return image_url
                 continue
-            image_url = _image_url_from_element(image, page.url)
+            image_url = _image_url_from_element(image, page_url)
             if image_url:
                 return image_url
     return None
 
 
-def _jsonld_products_from_page(page, store, search_url):
+def _jsonld_products_from_page(soup, store, search_url):
     products = []
     seen_urls = set()
-    scripts = page.locator('script[type="application/ld+json"]')
-    try:
-        script_count = min(scripts.count(), 10)
-    except PlaywrightTimeoutError:
-        return products
+    scripts = soup.select('script[type="application/ld+json"]')[:10]
 
     def visit(value):
         if isinstance(value, list):
@@ -771,11 +732,10 @@ def _jsonld_products_from_page(page, store, search_url):
         if isinstance(item, dict):
             visit(item)
 
-    for index in range(script_count):
+    for script in scripts:
         try:
-            raw_json = scripts.nth(index).inner_text(timeout=100)
-            parsed_json = json.loads(raw_json)
-        except (PlaywrightTimeoutError, JSONDecodeError):
+            parsed_json = json.loads(script.string or script.get_text())
+        except JSONDecodeError:
             continue
         visit(parsed_json)
     return products
@@ -788,45 +748,17 @@ def check_price(url, target_price):
         (name for name, config in STORE_CONFIGS.items() if config["domain"] in hostname),
         None,
     )
-    browser_slot_acquired = False
     try:
-        BROWSER_SEMAPHORE.acquire()
-        browser_slot_acquired = True
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(
-                headless=True,
-                args=CHROMIUM_LAUNCH_ARGS,
-            )
-            context = None
-            try:
-                context = browser.new_context(
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/120.0.0.0 Safari/537.36"
-                    ),
-                    extra_http_headers={
-                        "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8"
-                    },
-                    viewport={"width": 1920, "height": 1080},
-                    java_script_enabled=True,
-                )
-                page = context.new_page()
-                page.route("**/*", block_agressive_media)
-                page.goto(
-                    url,
-                    wait_until="domcontentloaded",
-                    timeout=PAGE_LOAD_TIMEOUT_MS,
-                )
-                page.wait_for_timeout(700)
-                current_price = extract_price(page, store)
-                image_url = _product_image_url(page)
-            finally:
-                try:
-                    if context is not None:
-                        context.close()
-                finally:
-                    browser.close()
+        with httpx.Client(
+            headers=HTTP_HEADERS,
+            timeout=HTTP_TIMEOUT_SECONDS,
+            follow_redirects=True,
+        ) as client:
+            response = client.get(url)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+            current_price = extract_price(soup, store)
+            image_url = _product_image_url(soup, str(response.url))
     except Exception as error:
         message = f"Fiyat kontrolü başarısız: {error}"
         print(f"❌ {message}", flush=True)
@@ -836,9 +768,6 @@ def check_price(url, target_price):
             "image_url": None,
             "message": message,
         }
-    finally:
-        if browser_slot_acquired:
-            BROWSER_SEMAPHORE.release()
 
     if current_price is None:
         message = "Sayfada okunabilir bir ürün fiyatı bulunamadı."
@@ -1062,33 +991,17 @@ def _price_from_card(card, store):
     prices = []
     selectors = tuple(STORE_CONFIGS[store]["prices"]) + FALLBACK_PRICE_SELECTORS
     for selector in dict.fromkeys(selectors):
-        elements = card.locator(selector)
-        try:
-            count = min(elements.count(), 5)
-        except PlaywrightTimeoutError:
-            continue
-        for index in range(count):
-            element = elements.nth(index)
-            try:
-                if not element.is_visible(timeout=300):
-                    continue
-                text = element.inner_text(timeout=500).strip()
-                if text:
-                    prices.extend(_prices_from_element_text(text))
-                if not text:
-                    value = element.get_attribute("content", timeout=300)
-                    price = parse_price(value or "", allow_bare=True)
-                    if price is not None:
-                        prices.append(price)
-            except PlaywrightTimeoutError:
-                continue
+        for element in card.select(selector)[:5]:
+            text = element.get_text("\n", strip=True)
+            if text:
+                prices.extend(_prices_from_element_text(text))
+            if not text:
+                price = parse_price(element.get("content", ""), allow_bare=True)
+                if price is not None:
+                    prices.append(price)
         if prices:
             return prices[-1]
-    try:
-        card_text = card.inner_text(timeout=500)
-    except PlaywrightTimeoutError:
-        return None
-    prices = _prices_from_element_text(card_text)
+    prices = _prices_from_element_text(card.get_text("\n", strip=True))
     if prices:
         return prices[0]
     return None
@@ -1098,32 +1011,19 @@ def _product_from_card(card, store, search_url):
     title = ""
     link = None
     for selector in RESULT_CARD_TITLE_SELECTORS:
-        heading = card.locator(selector).first
-        try:
-            if heading.count() and heading.is_visible(timeout=300):
-                title = heading.inner_text(timeout=500).strip()
-                link = heading.locator("a").first
-                if not link.count():
-                    link = heading if heading.evaluate("(element) => element.matches('a[href]')") else None
-                break
-        except PlaywrightTimeoutError:
-            continue
-    if not link or not link.count():
-        try:
-            card_is_link = card.evaluate("(element) => element.matches('a[href]')")
-        except PlaywrightTimeoutError:
-            card_is_link = False
-        if card_is_link:
+        heading = card.select_one(selector)
+        if heading:
+            title = heading.get_text(" ", strip=True)
+            link = heading if heading.name == "a" else heading.select_one("a")
+            break
+    if link is None:
+        if card.name == "a":
             link = card
         else:
-            product_link = card.locator('a[href*="/dp/"]').first
-            link = product_link if product_link.count() else card.locator("a[href]").first
-    try:
-        href = link.get_attribute("href", timeout=500) if link.count() else None
-        if not title and link.count():
-            title = link.inner_text(timeout=500).strip()
-    except PlaywrightTimeoutError:
-        return None
+            link = card.select_one('a[href*="/dp/"]') or card.select_one("a[href]")
+    href = link.get("href") if link else None
+    if not title and link:
+        title = link.get_text(" ", strip=True)
 
     product_url = urljoin(search_url, href or "")
     parsed_url = urlsplit(product_url)
@@ -1143,10 +1043,7 @@ def _product_from_card(card, store, search_url):
     price = _price_from_card(card, store)
     if price is None:
         return None
-    try:
-        description = card.inner_text(timeout=500).strip()
-    except PlaywrightTimeoutError:
-        description = title
+    description = card.get_text(" ", strip=True) or title
     image_url = _image_url_from_card(card, search_url)
     return {
         "title": title,
@@ -1203,156 +1100,106 @@ def _search_radar(radar):
         )
     except (TypeError, ValueError, OverflowError):
         scan_depth = DEFAULT_SCAN_DEPTH
-    browser_slot_acquired = False
     try:
-        BROWSER_SEMAPHORE.acquire()
-        browser_slot_acquired = True
-        with sync_playwright() as playwright:
-            store_deadline = time.monotonic() + STORE_SCAN_TIMEOUT_SECONDS
-            browser = playwright.chromium.launch(
-                headless=True,
-                args=CHROMIUM_LAUNCH_ARGS,
-            )
-            context = None
-            try:
-                context = browser.new_context(
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/120.0.0.0 Safari/537.36"
-                    ),
-                    extra_http_headers={
-                        "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8"
-                    },
-                    viewport={"width": 1920, "height": 1080},
-                    java_script_enabled=True,
-                )
-                page = context.new_page()
-                page.route("**/*", block_agressive_media)
-                products = []
-                seen_urls = set()
-                errors = []
-                challenge_markers = (
-                    "cloudflare",
-                    "captcha",
-                    "security verification",
-                    "performing security verification",
-                    "attention required",
-                    "access denied",
-                    "erişim engellendi",
-                )
-                for page_number in range(1, scan_depth + 1):
-                    remaining_ms = int(
-                        (store_deadline - time.monotonic()) * 1000
+        store_deadline = time.monotonic() + STORE_SCAN_TIMEOUT_SECONDS
+        products = []
+        seen_urls = set()
+        errors = []
+        challenge_markers = (
+            "cloudflare",
+            "captcha",
+            "security verification",
+            "performing security verification",
+            "attention required",
+            "access denied",
+            "erişim engellendi",
+        )
+        with httpx.Client(
+            headers=HTTP_HEADERS,
+            timeout=HTTP_TIMEOUT_SECONDS,
+            follow_redirects=True,
+        ) as client:
+            for page_number in range(1, scan_depth + 1):
+                remaining_seconds = store_deadline - time.monotonic()
+                if remaining_seconds <= 0:
+                    errors.append(
+                        f"{store} taraması {STORE_SCAN_TIMEOUT_SECONDS} saniyelik "
+                        "mağaza süresini aştı."
                     )
-                    if remaining_ms <= 0:
-                        errors.append(
-                            f"{store} taraması {STORE_SCAN_TIMEOUT_SECONDS} saniyelik "
-                            "mağaza süresini aştı."
-                        )
-                        break
-                    page_url = _search_page_url(
-                        search_url,
-                        config["page_param"],
-                        page_number,
+                    break
+                page_url = _search_page_url(
+                    search_url,
+                    config["page_param"],
+                    page_number,
+                )
+                try:
+                    response = client.get(
+                        page_url,
+                        timeout=min(HTTP_TIMEOUT_SECONDS, remaining_seconds),
                     )
-                    try:
-                        response = page.goto(
-                            page_url,
-                            wait_until="domcontentloaded",
-                            timeout=min(PAGE_LOAD_TIMEOUT_MS, remaining_ms),
-                        )
-                    except PlaywrightTimeoutError:
-                        errors.append(
-                            f"{store} sayfa {page_number} yüklenirken zaman aşımına uğradı."
-                        )
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as error:
+                    errors.append(
+                        f"{store} araması HTTP {error.response.status_code} "
+                        f"yanıtı verdi (sayfa {page_number})."
+                    )
+                    if page_number == 1:
                         break
-                    cards_ready = page.locator(", ".join(config["cards"])).first
-                    try:
-                        remaining_ms = int(
-                            (store_deadline - time.monotonic()) * 1000
-                        )
-                        if remaining_ms > 0:
-                            cards_ready.wait_for(
-                                state="attached",
-                                timeout=min(1000, remaining_ms),
-                            )
-                    except PlaywrightTimeoutError:
-                        pass
-                    if response and response.status >= 400:
-                        errors.append(
-                            f"{store} araması HTTP {response.status} yanıtı verdi (sayfa {page_number})."
-                        )
-                        if page_number == 1:
-                            break
-                        continue
+                    continue
+                except httpx.HTTPError as error:
+                    errors.append(
+                        f"{store} sayfa {page_number} alınamadı: {error}"
+                    )
+                    break
 
-                    cards = None
-                    for selector in config["cards"]:
-                        locator = page.locator(selector)
-                        if locator.count():
-                            cards = locator
-                            break
-                    if cards is None:
-                        for selector in FALLBACK_RESULT_CARD_SELECTORS:
-                            locator = page.locator(selector)
-                            if locator.count():
-                                cards = locator
-                                break
-                    if cards is None:
-                        jsonld_products = _jsonld_products_from_page(
-                            page, store, page.url
-                        )
-                        for product in jsonld_products:
-                            parsed_url = urlsplit(product["url"])
-                            product_identity = urlunsplit(
-                                (
-                                    parsed_url.scheme.lower(),
-                                    parsed_url.netloc.lower(),
-                                    parsed_url.path.rstrip("/"),
-                                    "",
-                                    "",
-                                )
-                            )
-                            if product_identity not in seen_urls:
-                                seen_urls.add(product_identity)
-                                products.append(product)
-                        if jsonld_products:
-                            break
-                        title = page.title().lower()
-                        body = page.locator("body").inner_text(timeout=500).lower()
-                        if any(word in title + body[:1200] for word in challenge_markers):
-                            errors.append(
-                                f"{store} otomatik aramaya güvenlik doğrulaması uyguladı."
-                            )
-                        elif page_number == 1:
-                            errors.append(
-                                f"{store} arama sayfasında ürün kartı bulunamadı."
-                            )
+                soup = BeautifulSoup(response.text, "html.parser")
+                cards = []
+                for selector in (*config["cards"], *FALLBACK_RESULT_CARD_SELECTORS):
+                    cards = soup.select(selector)
+                    if cards:
                         break
-
-                    parsed_count = 0
-                    for index in range(min(cards.count(), 10)):
-                        if time.monotonic() >= store_deadline:
-                            break
-                        product = _product_from_card(cards.nth(index), store, page.url)
-                        if product:
-                            parsed_count += 1
-                            parsed_product_url = urlsplit(product["url"])
-                            product_identity = urlunsplit(
-                                (
-                                    parsed_product_url.scheme.lower(),
-                                    parsed_product_url.netloc.lower(),
-                                    parsed_product_url.path.rstrip("/"),
-                                    "",
-                                    "",
-                                )
+                page_url = str(response.url)
+                if not cards:
+                    jsonld_products = _jsonld_products_from_page(
+                        soup,
+                        store,
+                        page_url,
+                    )
+                    for product in jsonld_products:
+                        parsed_url = urlsplit(product["url"])
+                        product_identity = urlunsplit(
+                            (
+                                parsed_url.scheme.lower(),
+                                parsed_url.netloc.lower(),
+                                parsed_url.path.rstrip("/"),
+                                "",
+                                "",
                             )
-                            if product_identity in seen_urls:
-                                continue
+                        )
+                        if product_identity not in seen_urls:
                             seen_urls.add(product_identity)
                             products.append(product)
-                    for product in _jsonld_products_from_page(page, store, page.url):
+                    if jsonld_products:
+                        break
+                    title = soup.title.get_text(" ", strip=True).lower() if soup.title else ""
+                    body = soup.body.get_text(" ", strip=True).lower() if soup.body else ""
+                    if any(word in title + body[:1200] for word in challenge_markers):
+                        errors.append(
+                            f"{store} otomatik aramaya güvenlik doğrulaması uyguladı."
+                        )
+                    elif page_number == 1:
+                        errors.append(
+                            f"{store} arama sayfasında ürün kartı bulunamadı."
+                        )
+                    break
+
+                parsed_count = 0
+                for card in cards[:10]:
+                    if time.monotonic() >= store_deadline:
+                        break
+                    product = _product_from_card(card, store, page_url)
+                    if product:
+                        parsed_count += 1
                         parsed_product_url = urlsplit(product["url"])
                         product_identity = urlunsplit(
                             (
@@ -1366,31 +1213,33 @@ def _search_radar(radar):
                         if product_identity not in seen_urls:
                             seen_urls.add(product_identity)
                             products.append(product)
-                    if cards.count() and not parsed_count:
-                        errors.append(
-                            f"{store} sayfa {page_number}: ürün kartları bulundu ancak "
-                            "başlık, mağaza bağlantısı veya fiyat çıkarılamadı."
+                for product in _jsonld_products_from_page(soup, store, page_url):
+                    parsed_product_url = urlsplit(product["url"])
+                    product_identity = urlunsplit(
+                        (
+                            parsed_product_url.scheme.lower(),
+                            parsed_product_url.netloc.lower(),
+                            parsed_product_url.path.rstrip("/"),
+                            "",
+                            "",
                         )
-                print(
-                    f"[LOG] {store}: {len(products)} ürün",
-                    flush=True,
-                )
-                for message in errors:
-                    print(f"[WARN] {message}", flush=True)
-                return products, " ".join(errors) or None
-            finally:
-                try:
-                    if context is not None:
-                        context.close()
-                finally:
-                    browser.close()
+                    )
+                    if product_identity not in seen_urls:
+                        seen_urls.add(product_identity)
+                        products.append(product)
+                if cards and not parsed_count:
+                    errors.append(
+                        f"{store} sayfa {page_number}: ürün kartları bulundu ancak "
+                        "başlık, mağaza bağlantısı veya fiyat çıkarılamadı."
+                    )
+        print(f"[LOG] {store}: {len(products)} ürün", flush=True)
+        for message in errors:
+            print(f"[WARN] {message}", flush=True)
+        return products, " ".join(errors) or None
     except Exception as error:
         message = f"{store} araması başarısız: {error}"
         print(f"❌ {message}", flush=True)
         return [], message
-    finally:
-        if browser_slot_acquired:
-            BROWSER_SEMAPHORE.release()
 
 
 def _selected_stores(radar):
@@ -1508,7 +1357,7 @@ def _search_radar_stores(radar, stores=None, on_store_complete=None):
         raise ValueError("Tarama mağazaları seçili mağaza listesiyle uyuşmuyor.")
     allowed_stores = frozenset(selected_stores)
     with ThreadPoolExecutor(
-        max_workers=min(len(stores), MAX_CONCURRENT_BROWSERS)
+        max_workers=min(len(stores), MAX_CONCURRENT_REQUESTS)
     ) as executor:
         futures = {
             executor.submit(
