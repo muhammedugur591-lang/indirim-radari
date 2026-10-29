@@ -1,5 +1,6 @@
 ﻿import os
 
+import asyncio
 import json
 import math
 import re
@@ -91,6 +92,10 @@ OFFERS_LOCK = threading.RLock()
 PRODUCT_DATABASE_LOCK = threading.RLock()
 PRODUCT_DATABASE = []
 CATALOG_REFRESH_LOCK = threading.Lock()
+OFFER_SYNC_LOCK = threading.Lock()
+OFFER_SYNCING = set()
+OFFER_SYNC_TASKS = set()
+OFFER_SYNC_ERRORS = {}
 RADAR_SCAN_LOCK = threading.Lock()
 SCAN_PROGRESS_LOCK = threading.RLock()
 SCAN_PROGRESS = {
@@ -473,7 +478,11 @@ def _ensure_database():
             "offers": OFFERS_FILE,
         }
     )
-    database.seed_catalog(PRODUCTS_DB_FILE, CATEGORY_CATALOG)
+    database.seed_catalog(
+        PRODUCTS_DB_FILE,
+        CATEGORY_CATALOG,
+        stores=STORE_CONFIGS,
+    )
 
 
 def load_products():
@@ -967,6 +976,106 @@ def check_catalog_prices():
         return len(updated_by_id)
     finally:
         CATALOG_REFRESH_LOCK.release()
+
+
+def _persist_offer_sync(offer_id, result):
+    with OFFERS_LOCK:
+        offers = load_offers()
+        index = next(
+            (i for i, item in enumerate(offers) if item.get("id") == offer_id),
+            None,
+        )
+        if index is None:
+            return False
+        offer = offers[index]
+        try:
+            old_price = float(offer.get("price"))
+            current_price = float(result["current_price"])
+        except (KeyError, TypeError, ValueError, OverflowError):
+            return False
+        if (
+            not math.isfinite(old_price)
+            or old_price <= 0
+            or not math.isfinite(current_price)
+            or current_price <= 0
+            or math.isclose(old_price, current_price, rel_tol=0, abs_tol=0.005)
+        ):
+            return False
+        checked_at = datetime.now().astimezone().isoformat(timespec="milliseconds")
+        updated = {
+            **offer,
+            "previous_price": old_price,
+            "price": current_price,
+            "last_seen": checked_at,
+            "price_history": _append_price_history(
+                offer,
+                current_price,
+                checked_at,
+            ),
+        }
+        try:
+            minimum_price = float(offer.get("min_price", 0))
+            maximum_price = float(offer.get("max_price"))
+        except (TypeError, ValueError, OverflowError):
+            minimum_price = maximum_price = math.nan
+        if math.isfinite(minimum_price) and math.isfinite(maximum_price):
+            updated["active"] = minimum_price <= current_price <= maximum_price
+        if result.get("image_url"):
+            updated["image_url"] = result["image_url"]
+        offers[index] = updated
+        _save_json_list(OFFERS_FILE, offers, OFFERS_LOCK)
+        return True
+
+
+async def _refresh_offer_price(offer_id):
+    try:
+        offers = await asyncio.to_thread(load_offers)
+        offer = next(
+            (item for item in offers if item.get("id") == offer_id),
+            None,
+        )
+        if offer is None or not _valid_product_url(offer.get("url")):
+            return
+        result = await asyncio.to_thread(
+            check_price,
+            offer["url"],
+            float(offer["price"]),
+        )
+        if not isinstance(result.get("current_price"), (int, float)):
+            message = str(result.get("message") or "Mağazadan fiyat okunamadı.")
+            with OFFER_SYNC_LOCK:
+                OFFER_SYNC_ERRORS[offer_id] = message
+            print(
+                f"[WARN] Ürün detay fiyatı güncellenemedi "
+                f"({offer.get('store')}): {message}",
+                flush=True,
+            )
+            return
+        changed = await asyncio.to_thread(
+            _persist_offer_sync,
+            offer_id,
+            result,
+        )
+        if changed:
+            print(f"Ürün fiyatı arka planda güncellendi: {offer_id}", flush=True)
+    except Exception as error:
+        with OFFER_SYNC_LOCK:
+            OFFER_SYNC_ERRORS[offer_id] = str(error)
+        print(f"❌ Ürün fiyatı arka planda güncellenemedi: {error}", flush=True)
+    finally:
+        with OFFER_SYNC_LOCK:
+            OFFER_SYNCING.discard(offer_id)
+
+
+def _schedule_offer_sync(offer_id):
+    with OFFER_SYNC_LOCK:
+        if offer_id in OFFER_SYNCING:
+            return
+        OFFER_SYNC_ERRORS.pop(offer_id, None)
+        OFFER_SYNCING.add(offer_id)
+        task = asyncio.create_task(_refresh_offer_price(offer_id))
+        OFFER_SYNC_TASKS.add(task)
+        task.add_done_callback(OFFER_SYNC_TASKS.discard)
 
 
 def _load_json_list(path, lock):
@@ -1491,65 +1600,6 @@ def _search_radar_stores(radar, stores=None, on_store_complete=None):
                     print(f"[ERROR] {message}", flush=True)
     results.sort(key=lambda product: product["price"])
     return results, errors
-
-
-def filter_saved_offers(
-    query="",
-    min_price=None,
-    max_price=None,
-    stores=None,
-    category="",
-    subcategory="",
-    brand="",
-):
-    normalized_query = _normalized_filter_text(query.strip()) if query else ""
-    query_terms = normalized_query.split()
-    store_filter = set(stores or [])
-    normalized_category = _normalized_filter_text(category) if category else ""
-    normalized_subcategory = _normalized_filter_text(subcategory) if subcategory else ""
-    normalized_brand = _normalized_filter_text(brand.strip()) if brand else ""
-    with PRODUCT_DATABASE_LOCK:
-        offers = tuple(PRODUCT_DATABASE)
-    matching = []
-    for offer in offers:
-        if not isinstance(offer, dict) or not (offer.get("active") or offer.get("is_discounted")):
-            continue
-        price = offer.get("price")
-        if not isinstance(price, (int, float)) or not math.isfinite(price):
-            continue
-        if min_price is not None and price < min_price:
-            continue
-        if max_price is not None and price > max_price:
-            continue
-        if store_filter and offer.get("store") not in store_filter:
-            continue
-        if normalized_category and _normalized_filter_text(
-            str(offer.get("category", ""))
-        ) != normalized_category:
-            continue
-        if normalized_subcategory and _normalized_filter_text(
-            str(offer.get("subcategory", ""))
-        ) != normalized_subcategory:
-            continue
-        if normalized_brand and normalized_brand not in _normalized_filter_text(
-            f"{offer.get('brand', '')} {offer.get('title', '')}"
-        ):
-            continue
-        searchable_text = _normalized_filter_text(
-            f"{offer.get('title', '')} {offer.get('query', '')} "
-            f"{offer.get('category', '')} {offer.get('subcategory', '')} "
-            f"{offer.get('store', '')}"
-        )
-        if query_terms and not all(term in searchable_text for term in query_terms):
-            continue
-        matching.append(dict(offer))
-    matching.sort(
-        key=lambda offer: (
-            not offer.get("is_discounted", False),
-            offer["price"],
-        )
-    )
-    return matching
 
 
 def _radar_query_from_selection(payload):
@@ -2217,11 +2267,15 @@ def health_check():
 
 @app.get("/api/categories")
 def get_categories():
-    return {
-        "categories": database.load_categories(),
-        "monitor_filters": MONITOR_FILTERS,
-        "store_groups": STORE_GROUPS,
-    }
+    try:
+        return {
+            "categories": database.load_categories(),
+            "stores": database.load_stores(),
+            "monitor_filters": MONITOR_FILTERS,
+            "store_groups": STORE_GROUPS,
+        }
+    except RuntimeError as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
 
 
 @app.get("/api/history/{collection_name}/{entry_id}")
@@ -2294,12 +2348,62 @@ def get_offers():
         raise HTTPException(status_code=500, detail=str(error)) from error
 
 
+@app.get("/api/catalog/vitrines")
+def get_catalog_vitrines():
+    try:
+        return database.load_vitrines()
+    except RuntimeError as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+
+@app.get("/api/offers/{offer_id}")
+async def get_offer_detail(offer_id: str, sync: bool = True):
+    try:
+        offers = await asyncio.to_thread(load_offers)
+        offer = next(
+            (item for item in offers if item.get("id") == offer_id),
+            None,
+        )
+        if offer is None:
+            raise HTTPException(status_code=404, detail="Ürün bulunamadı.")
+        if sync and _valid_product_url(offer.get("url")):
+            _schedule_offer_sync(offer_id)
+        cutoff = (
+            datetime.now().astimezone() - timedelta(days=366)
+        ).strftime("%Y-%m-%d %H:%M")
+        history = await asyncio.to_thread(
+            database.load_price_history,
+            "offers",
+            offer_id,
+            cutoff,
+        )
+        offers = await asyncio.to_thread(load_offers)
+        offer = next(
+            (item for item in offers if item.get("id") == offer_id),
+            None,
+        )
+        if offer is None:
+            raise HTTPException(status_code=404, detail="Ürün bulunamadı.")
+        with OFFER_SYNC_LOCK:
+            syncing = offer_id in OFFER_SYNCING
+            sync_error = OFFER_SYNC_ERRORS.get(offer_id)
+        return {
+            "offer": offer,
+            "price_history": history,
+            "syncing": syncing,
+            "sync_error": sync_error,
+        }
+    except RuntimeError as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+
 @app.get("/api/search")
 def search_offers(request: Request):
     query = request.query_params.get("q", "")
     category = request.query_params.get("category", "")
     subcategory = request.query_params.get("subcategory", "")
     brand = request.query_params.get("brand", "")
+    technical = request.query_params.get("technical", "")
     try:
         min_price = (
             float(request.query_params["min_price"])
@@ -2314,14 +2418,15 @@ def search_offers(request: Request):
         stores = request.query_params.getlist("store")
         if any(store not in STORE_CONFIGS for store in stores):
             raise ValueError("Mağaza filtresi geçersiz.")
-        if category and category not in CATEGORY_CATALOG:
+        category_catalog = database.load_categories()
+        if category and category not in category_catalog:
             raise ValueError("Kategori filtresi geçersiz.")
         if subcategory and (
-            not category or subcategory not in CATEGORY_CATALOG[category]
+            not category or subcategory not in category_catalog[category]
         ):
             raise ValueError("Alt kategori filtresi geçersiz.")
-        if len(brand) > 120:
-            raise ValueError("Marka filtresi en fazla 120 karakter olabilir.")
+        if len(brand) > 120 or len(technical) > 120 or len(query) > 120:
+            raise ValueError("Arama, marka ve teknik özellik filtreleri en fazla 120 karakter olabilir.")
         if min_price is not None and (
             not math.isfinite(min_price) or min_price < 0
         ):
@@ -2336,26 +2441,20 @@ def search_offers(request: Request):
             and min_price > max_price
         ):
             raise ValueError("Minimum fiyat maksimum fiyattan büyük olamaz.")
-        return filter_saved_offers(
-            query,
-            min_price,
-            max_price,
-            stores,
-            category,
-            subcategory,
-            brand,
+        return database.search_products(
+            query=query,
+            min_price=min_price,
+            max_price=max_price,
+            stores=stores,
+            category=category,
+            subcategory=subcategory,
+            brand=brand,
+            technical=technical,
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except RuntimeError as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
-    except Exception as error:
-        message = str(error)
-        print(f"❌ Ürün araması başarısız: {message}", flush=True)
-        return JSONResponse(
-            status_code=200,
-            content={"status": "error", "message": message},
-        )
 
 
 @app.get("/")
@@ -2364,6 +2463,25 @@ def get_index():
         ROOT / "index.html",
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
     )
+
+
+@app.get("/tum-kategoriler")
+def get_all_categories_page():
+    return get_index()
+
+
+@app.get("/kategori/{category_slug}")
+def get_category_page(category_slug: str):
+    if not category_slug.strip():
+        raise HTTPException(status_code=404, detail="Kategori sayfası bulunamadı.")
+    return get_index()
+
+
+@app.get("/urun/{offer_id}")
+def get_offer_page(offer_id: str):
+    if not offer_id.strip():
+        raise HTTPException(status_code=404, detail="Ürün sayfası bulunamadı.")
+    return get_index()
 
 
 @app.get("/index.html")

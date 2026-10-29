@@ -231,6 +231,16 @@
       <article class="stat"><span class="stat-icon" aria-hidden="true">⌕</span><div><div class="stat-label">Akıllı radar</div><div class="stat-value" id="radarCount">0</div></div></article>
       <article class="stat"><span class="stat-icon" aria-hidden="true">✦</span><div><div class="stat-label">Aktif fırsat</div><div class="stat-value" id="offerCount">0</div></div></article>
     </section>
+    <section class="catalog-showcases" aria-label="Ürün vitrinleri">
+      <article class="panel showcase-panel">
+        <div class="panel-head"><div class="feed-heading"><h2>Günün Şok İndirimleri</h2><span class="pill-count" id="shockShowcaseCount">0</span></div></div>
+        <div class="showcase-list" id="shockShowcaseList"></div>
+      </article>
+      <article class="panel showcase-panel">
+        <div class="panel-head"><div class="feed-heading"><h2>Popüler Ürünler</h2><span class="pill-count" id="popularShowcaseCount">0</span></div></div>
+        <div class="showcase-list" id="popularShowcaseList"></div>
+      </article>
+    </section>
     <section class="dashboard" aria-label="Ürün ve fırsat panosu">
       <section class="panel">
         <div class="panel-head">
@@ -290,23 +300,31 @@
         </div>
       </section>
       <div>
-        <section class="panel feed-panel">
+        <section class="panel feed-panel catalog-panel">
           <div class="panel-head">
             <div class="feed-heading"><h2>Bulunan fırsatlar</h2><span class="pill-count" id="offerBadge">0</span></div>
             <p class="panel-caption">Bütçenin altında bulunan güncel ürünler.</p>
-            <div class="offer-search">
-              <input id="offerSearch" type="search" placeholder="Ürün veya mağaza ara" aria-label="Ürün veya mağaza ara">
-              <input id="offerSearchBrand" type="search" placeholder="Marka" aria-label="Marka filtresi">
-              <select id="offerSearchCategory" aria-label="Kategori filtresi"><option value="">Tüm kategoriler</option></select>
-              <select id="offerSearchSubcategory" aria-label="Alt kategori filtresi" disabled><option value="">Tüm alt kategoriler</option></select>
-              <select id="offerSearchStore" aria-label="Mağaza filtresi"><option value="">Tüm mağazalar</option></select>
-              <input id="offerSearchMin" type="text" inputmode="decimal" placeholder="Min TL" aria-label="En düşük fiyat filtresi">
-              <input id="offerSearchMax" type="text" inputmode="decimal" placeholder="Maks. TL" aria-label="En yüksek fiyat filtresi">
-              <p class="form-status" id="offerSearchStatus" role="status" aria-live="polite"></p>
+          </div>
+          <div class="catalog-layout">
+            <aside class="catalog-sidebar" aria-label="Ürün filtreleri">
+              <h3>Filtrele</h3>
+              <div class="offer-search">
+                <input id="offerSearch" type="search" placeholder="Ürün veya mağaza ara" aria-label="Ürün veya mağaza ara">
+                <input id="offerSearchBrand" type="search" placeholder="Marka" aria-label="Marka filtresi">
+                <input id="offerSearchFeature" type="search" placeholder="Teknik özellik" aria-label="Teknik özellik filtresi">
+                <select id="offerSearchCategory" aria-label="Kategori filtresi"><option value="">Tüm kategoriler</option></select>
+                <select id="offerSearchSubcategory" aria-label="Alt kategori filtresi" disabled><option value="">Tüm alt kategoriler</option></select>
+                <select id="offerSearchStore" aria-label="Mağaza filtresi"><option value="">Tüm mağazalar</option></select>
+                <input id="offerSearchMin" type="text" inputmode="decimal" placeholder="Min TL" aria-label="En düşük fiyat filtresi">
+                <input id="offerSearchMax" type="text" inputmode="decimal" placeholder="Maks. TL" aria-label="En yüksek fiyat filtresi">
+                <p class="form-status" id="offerSearchStatus" role="status" aria-live="polite"></p>
+              </div>
+            </aside>
+            <div class="catalog-results">
+              <div class="feed-body" id="offerList"><div class="empty"><span class="empty-mark">✦</span><strong>Henüz fırsat yok</strong><span>Bir özellik radarı oluşturunca sonuçlar burada görünür.</span></div></div>
+              <nav class="pagination" id="offerPagination" aria-label="Fırsatlar sayfalaması" hidden></nav>
             </div>
           </div>
-          <div class="feed-body" id="offerList"><div class="empty"><span class="empty-mark">✦</span><strong>Henüz fırsat yok</strong><span>Bir özellik radarı oluşturunca sonuçlar burada görünür.</span></div></div>
-          <nav class="pagination" id="offerPagination" aria-label="Fırsatlar sayfalaması" hidden></nav>
         </section>
         <section class="panel feed-panel">
           <div class="panel-head"><div class="feed-heading"><h2>Akıllı radarlar</h2><span class="pill-count" id="radarBadge">0</span></div></div>
@@ -319,7 +337,7 @@
         </section>
       </div>
     </section>
-    <p class="footnote">Ürün kataloğu ve fiyat geçmişi SQLite veritabanında tutulur; mağaza fiyatları 10 dakikada bir arka planda güncellenir. Mağazalar otomatik erişimi kısıtlayabilir.</p>
+    <p class="footnote">Arama ve filtreler SQLite kataloğundan sunulur. Ürün analizi açıldığında yalnızca o ürünün fiyatı arka planda kontrol edilir; katalog ayrıca 10 dakikada bir güncellenir. Mağazalar otomatik erişimi kısıtlayabilir.</p>
   </main>
   <dialog class="radar-edit-dialog" id="radarEditDialog" aria-labelledby="radarEditTitle">
     <div class="radar-edit-head">
@@ -334,7 +352,8 @@
         <p class="eyebrow">Ürün fiyat analizi</p>
         <h2 class="history-title" id="historyTitle">Ürün Fiyat Analizi</h2>
         <p class="history-subtitle" id="historySubtitle">Ürünün son 6 ay fiyat değişim grafiği</p>
-      </div>
+          <p class="price-sync-status" id="priceSyncStatus" role="status" aria-live="polite"></p>
+        </div>
       <button class="icon-button history-close" id="historyClose" type="button" aria-label="Grafiği kapat">×</button>
     </div>
     <div class="history-content">
@@ -421,6 +440,8 @@
     let activePriceHistory = [];
     let activeCurrentPrice = null;
     let activeHistoryPeriod = "6m";
+    let activeProductId = null;
+    let activeProductRequest = 0;
 
     async function requestJson(path, options = {}, onResponse = null) {
       const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -482,6 +503,7 @@
 
     const offerSearchInput = document.querySelector("#offerSearch");
     const offerSearchBrandInput = document.querySelector("#offerSearchBrand");
+    const offerSearchFeatureInput = document.querySelector("#offerSearchFeature");
     const offerSearchMinInput = document.querySelector("#offerSearchMin");
     const offerSearchMaxInput = document.querySelector("#offerSearchMax");
     const offerSearchCategory = document.querySelector("#offerSearchCategory");
@@ -494,6 +516,7 @@
       return Boolean(
         offerSearchInput.value.trim()
         || offerSearchBrandInput.value.trim()
+        || offerSearchFeatureInput.value.trim()
         || offerSearchMinInput.value.trim()
         || offerSearchMaxInput.value.trim()
         || offerSearchCategory.value
@@ -513,6 +536,7 @@
       const params = new URLSearchParams();
       const query = offerSearchInput.value.trim();
       const brand = offerSearchBrandInput.value.trim();
+      const technical = offerSearchFeatureInput.value.trim();
       const minPrice = parseLocalizedPrice(offerSearchMinInput.value);
       const maxPrice = parseLocalizedPrice(offerSearchMaxInput.value);
       if (offerSearchMinInput.value.trim() && minPrice === null) {
@@ -529,6 +553,7 @@
       if (maxPrice !== null) params.set("max_price", String(maxPrice));
       if (query) params.set("q", query);
       if (brand) params.set("brand", brand);
+      if (technical) params.set("technical", technical);
       if (offerSearchCategory.value) params.set("category", offerSearchCategory.value);
       if (offerSearchSubcategory.value) {
         params.set("subcategory", offerSearchSubcategory.value);
@@ -557,6 +582,7 @@
 
     offerSearchInput.addEventListener("input", refreshOfferSearch);
     offerSearchBrandInput.addEventListener("input", refreshOfferSearch);
+    offerSearchFeatureInput.addEventListener("input", refreshOfferSearch);
     offerSearchMinInput.addEventListener("input", refreshOfferSearch);
     offerSearchMaxInput.addEventListener("input", refreshOfferSearch);
     offerSearchStore.addEventListener("change", refreshOfferSearch);
@@ -569,9 +595,13 @@
         subcategories,
         "Tüm alt kategoriler"
       );
+      updateCatalogLocation();
       void refreshOfferSearch();
     });
-    offerSearchSubcategory.addEventListener("change", refreshOfferSearch);
+    offerSearchSubcategory.addEventListener("change", () => {
+      updateCatalogLocation();
+      void refreshOfferSearch();
+    });
 
     function setFormStatus(element, message, isError = false) {
       element.textContent = message;
@@ -858,9 +888,70 @@
       );
       setSelectOptions(
         offerSearchStore,
-        Object.values(storeGroups).flat(),
+        catalog.stores || Object.values(storeGroups).flat(),
         "Tüm mağazalar"
       );
+    }
+
+    function categorySlug(name) {
+      return name
+        .toLocaleLowerCase("tr-TR")
+        .replace(/ı/g, "i")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+    }
+
+    function catalogUrl() {
+      const category = offerSearchCategory.value;
+      const path = category
+        ? `/kategori/${categorySlug(category)}`
+        : "/tum-kategoriler";
+      const subcategory = offerSearchSubcategory.value;
+      return subcategory
+        ? `${path}?alt=${encodeURIComponent(subcategory)}`
+        : path;
+    }
+
+    function updateCatalogLocation() {
+      const nextUrl = catalogUrl();
+      if (`${window.location.pathname}${window.location.search}` !== nextUrl) {
+        window.history.pushState({ view: "catalog" }, "", nextUrl);
+      }
+    }
+
+    function applyCatalogLocation() {
+      const path = window.location.pathname;
+      const productMatch = path.match(/^\/urun\/([^/]+)$/);
+      if (productMatch) {
+        void showProductDetails(decodeURIComponent(productMatch[1]), false);
+        return;
+      }
+      if (historyDialog.open) historyDialog.close();
+      const categoryMatch = path.match(/^\/kategori\/([^/]+)$/);
+      const category = categoryMatch
+        ? Object.keys(categoryCatalog).find(
+          (name) => categorySlug(name) === categoryMatch[1]
+        ) || ""
+        : "";
+      offerSearchCategory.value = category;
+      const subcategories = Object.keys(categoryCatalog[category] || {});
+      setSelectOptions(
+        offerSearchSubcategory,
+        subcategories,
+        "Tüm alt kategoriler"
+      );
+      const requestedSubcategory = new URLSearchParams(
+        window.location.search
+      ).get("alt");
+      offerSearchSubcategory.value = subcategories.includes(requestedSubcategory)
+        ? requestedSubcategory
+        : "";
+      if (path === "/") {
+        window.history.replaceState({ view: "catalog" }, "", "/tum-kategoriler");
+      }
+      void refreshOfferSearch();
     }
 
     const HISTORY_PERIODS = {
@@ -998,6 +1089,102 @@
       }
     }
 
+    function updateOfferSnapshot(offer) {
+      dashboardOffers = dashboardOffers.map(
+        (item) => item.id === offer.id ? offer : item
+      );
+      if (offerSearchResults !== null) {
+        offerSearchResults = offerSearchResults.map(
+          (item) => item.id === offer.id ? offer : item
+        );
+        renderOffers(offerSearchResults);
+      } else {
+        renderOffersWithProgress();
+      }
+    }
+
+    async function pollOfferDetail(offerId, requestNumber) {
+      for (let attempt = 0; attempt < 18; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        if (requestNumber !== activeProductRequest) return;
+        try {
+          const detail = await requestJson(
+            `/api/offers/${encodeURIComponent(offerId)}?sync=false`
+          );
+          if (requestNumber !== activeProductRequest) return;
+          const updatedPrice = Number(detail.offer.price);
+          const priceChanged = Number.isFinite(updatedPrice)
+            && updatedPrice !== activeCurrentPrice;
+          activeHistoryTitle = detail.offer.title || "Ürün";
+          activePriceHistory = Array.isArray(detail.price_history)
+            ? detail.price_history
+            : [];
+          activeCurrentPrice = Number.isFinite(updatedPrice) ? updatedPrice : null;
+          updateOfferSnapshot(detail.offer);
+          renderPriceHistory();
+          if (!detail.syncing) {
+            document.querySelector("#priceSyncStatus").textContent = detail.sync_error
+              ? `Arka plan fiyat kontrolü başarısız: ${detail.sync_error}`
+              : priceChanged
+                ? "Yeni mağaza fiyatı ve fiyat geçmişi güncellendi."
+                : "Arka plan fiyat kontrolü tamamlandı.";
+            void loadVitrines();
+            return;
+          }
+        } catch (error) {
+          document.querySelector("#priceSyncStatus").textContent =
+            `Arka plan fiyat güncellemesi alınamadı: ${error.message}`;
+          return;
+        }
+      }
+      if (requestNumber === activeProductRequest) {
+        document.querySelector("#priceSyncStatus").textContent =
+          "Mağaza kontrolü sürüyor; fiyat değişirse katalog otomatik güncellenecek.";
+      }
+    }
+
+    async function showProductDetails(offerId, pushUrl = true) {
+      const requestNumber = ++activeProductRequest;
+      activeProductId = offerId;
+      if (pushUrl) {
+        window.history.pushState(
+          { view: "product", id: offerId },
+          "",
+          `/urun/${encodeURIComponent(offerId)}`
+        );
+      }
+      if (!historyDialog.open) historyDialog.showModal();
+      historyMessage.textContent = "Kayıtlı ürün ve fiyat geçmişi yükleniyor...";
+      historyMessage.classList.remove("hidden");
+      document.querySelector("#priceSyncStatus").textContent = "";
+      activeHistoryPeriod = "6m";
+      activePriceHistory = [];
+      activeCurrentPrice = null;
+      try {
+        const detail = await requestJson(
+          `/api/offers/${encodeURIComponent(offerId)}`
+        );
+        if (requestNumber !== activeProductRequest) return;
+        activeHistoryTitle = detail.offer.title || "Ürün";
+        activePriceHistory = Array.isArray(detail.price_history)
+          ? detail.price_history
+          : [];
+        const currentPrice = Number(detail.offer.price);
+        activeCurrentPrice = Number.isFinite(currentPrice) ? currentPrice : null;
+        document.querySelector("#priceSyncStatus").textContent = detail.syncing
+          ? "Mağaza fiyatı arka planda kontrol ediliyor; kayıtlı fiyat anında gösteriliyor."
+          : detail.sync_error
+            ? `Arka plan fiyat kontrolü başarısız: ${detail.sync_error}`
+            : "";
+        renderPriceHistory();
+        if (detail.syncing) void pollOfferDetail(offerId, requestNumber);
+      } catch (error) {
+        if (requestNumber !== activeProductRequest) return;
+        historyMessage.textContent = `Ürün detayı açılamadı: ${error.message}`;
+        historyMessage.classList.remove("hidden");
+      }
+    }
+
     document.querySelectorAll(".period-button").forEach((button) => {
       button.addEventListener("click", () => {
         activeHistoryPeriod = button.dataset.period;
@@ -1011,6 +1198,15 @@
       button.type = "button";
       button.textContent = "📈 Fiyat Geçmişi";
       button.addEventListener("click", () => showPriceHistory(type, id));
+      return button;
+    }
+
+    function createProductDetailsButton(id) {
+      const button = document.createElement("button");
+      button.className = "history-button";
+      button.type = "button";
+      button.textContent = "📈 Fiyat analizi";
+      button.addEventListener("click", () => showProductDetails(id));
       return button;
     }
 
@@ -1117,6 +1313,7 @@
       offerSearchResults = null;
       offerSearchInput.value = "";
       offerSearchBrandInput.value = "";
+      offerSearchFeatureInput.value = "";
       offerSearchMinInput.value = "";
       offerSearchMaxInput.value = "";
       offerSearchCategory.value = "";
@@ -1124,6 +1321,8 @@
       offerSearchSubcategory.disabled = true;
       offerSearchStore.value = "";
       offerSearchStatus.textContent = "";
+      renderShowcaseProducts("shockShowcaseList", "shockShowcaseCount", [], "Bugün şok indirim yok");
+      renderShowcaseProducts("popularShowcaseList", "popularShowcaseCount", [], "Popüler ürün bulunamadı");
       offerSearchRequest += 1;
       currentScanProgress = null;
       lastProgressSignature = "";
@@ -1382,7 +1581,7 @@
         sellerLink.textContent = "Satıcıya Git";
         priceColumn.append(sellerLink);
         if (!offer.provisional) {
-          priceColumn.append(createHistoryButton("offers", offer.id));
+          priceColumn.append(createProductDetailsButton(offer.id));
         }
         card.append(content, priceColumn);
         list.append(card);
@@ -1408,6 +1607,60 @@
         }
       }
       renderOffers(offers);
+    }
+
+    function renderShowcaseProducts(listId, countId, products, emptyMessage) {
+      const list = document.querySelector(`#${listId}`);
+      list.replaceChildren();
+      document.querySelector(`#${countId}`).textContent = String(products.length);
+      if (!products.length) {
+        list.append(createEmpty("✦", emptyMessage, "Ürünler eklendikçe bu vitrin veritabanından güncellenir."));
+        return;
+      }
+      for (const product of products) {
+        const card = document.createElement("article");
+        card.className = "showcase-product";
+        card.append(createThumbnail(product.image_url, product.title));
+        const content = document.createElement("div");
+        const title = document.createElement("button");
+        title.className = "showcase-title";
+        title.type = "button";
+        title.textContent = product.title || "Ürün";
+        title.addEventListener("click", () => showProductDetails(product.id));
+        const store = document.createElement("span");
+        store.className = "showcase-store";
+        store.textContent = product.store || "Mağaza";
+        content.append(title, store);
+        const price = document.createElement("strong");
+        price.className = "showcase-price";
+        price.textContent = `${Number(product.price).toLocaleString("tr-TR")} TL`;
+        const detail = createProductDetailsButton(product.id);
+        card.append(content, price, detail);
+        list.append(card);
+      }
+    }
+
+    async function loadVitrines() {
+      try {
+        const vitrines = await requestJson("/api/catalog/vitrines");
+        renderShowcaseProducts(
+          "shockShowcaseList",
+          "shockShowcaseCount",
+          vitrines.shock_deals || [],
+          "Bugün şok indirim yok"
+        );
+        renderShowcaseProducts(
+          "popularShowcaseList",
+          "popularShowcaseCount",
+          vitrines.popular_products || [],
+          "Popüler ürün bulunamadı"
+        );
+      } catch (error) {
+        for (const id of ["shockShowcaseList", "popularShowcaseList"]) {
+          const list = document.querySelector(`#${id}`);
+          list.replaceChildren(createEmpty("!", "Vitrin yüklenemedi", error.message));
+        }
+      }
     }
 
     async function refreshScanProgress() {
@@ -1439,10 +1692,11 @@
     }
 
     async function loadDashboard() {
-      const [products, radars, offers] = await Promise.all([
+      const [products, radars, offers, vitrines] = await Promise.all([
         requestJson("/api/products"),
         requestJson("/api/radars"),
-        requestJson("/api/offers")
+        requestJson("/api/offers"),
+        requestJson("/api/catalog/vitrines")
       ]);
       if (clearInProgress) return;
       const visibleProducts = products.filter(
@@ -1462,6 +1716,18 @@
       renderProducts(visibleProducts);
       dashboardOffers = visibleOffers;
       renderRadars(visibleRadars);
+      renderShowcaseProducts(
+        "shockShowcaseList",
+        "shockShowcaseCount",
+        vitrines.shock_deals || [],
+        "Bugün şok indirim yok"
+      );
+      renderShowcaseProducts(
+        "popularShowcaseList",
+        "popularShowcaseCount",
+        vitrines.popular_products || [],
+        "Popüler ürün bulunamadı"
+      );
       if (hasOfferSearchFilters()) {
         void refreshOfferSearch();
       } else {
@@ -1685,11 +1951,21 @@
 
     document.querySelector("#historyClose").addEventListener("click", () => historyDialog.close());
     historyDialog.addEventListener("close", () => {
+      activeProductRequest += 1;
+      activeProductId = null;
       if (historyChart) {
         historyChart.destroy();
         historyChart = null;
       }
+      if (window.location.pathname.startsWith("/urun/")) {
+        window.history.replaceState(
+          { view: "catalog" },
+          "",
+          catalogUrl()
+        );
+      }
     });
+    window.addEventListener("popstate", applyCatalogLocation);
 
     linkForm.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -1850,10 +2126,12 @@
         setFormStatus(radarStatus, `Bildirim servisi başlatılamadı: ${error.message}`, true);
       });
     }
-    Promise.all([loadCategories(), loadDashboard()]).catch((error) => {
-      connection.textContent = "Sunucuya bağlanılamadı";
-      setFormStatus(linkStatus, `main.py sunucusuna bağlanılamadı: ${error.message}`, true);
-    });
+    Promise.all([loadCategories(), loadDashboard()])
+      .then(() => applyCatalogLocation())
+      .catch((error) => {
+        connection.textContent = "Sunucuya bağlanılamadı";
+        setFormStatus(linkStatus, `main.py sunucusuna bağlanılamadı: ${error.message}`, true);
+      });
     window.setInterval(() => {
       if (!refreshRunning) {
         refreshRunning = true;
