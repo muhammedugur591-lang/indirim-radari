@@ -60,6 +60,7 @@ ROOT = Path(__file__).resolve().parent
 PRODUCTS_FILE = ROOT / "products.json"
 RADARS_FILE = ROOT / "radars.json"
 OFFERS_FILE = ROOT / "offers.json"
+PRODUCTS_DB_FILE = ROOT / "products_db.json"
 PRICE_TOKEN = re.compile(r"(?<!\d)\d[\d.,\s]*\d(?!\d)|(?<!\d)\d(?!\d)")
 PRICE_WITH_CURRENCY = re.compile(
     r"(?:₺\s*\d[\d.,\s]*\d|\d[\d.,\s]*\d\s*(?:₺|TL|TRY))",
@@ -89,6 +90,7 @@ RADARS_LOCK = threading.RLock()
 OFFERS_LOCK = threading.RLock()
 PRODUCT_DATABASE_LOCK = threading.RLock()
 PRODUCT_DATABASE = []
+CATALOG_REFRESH_LOCK = threading.Lock()
 RADAR_SCAN_LOCK = threading.Lock()
 SCAN_PROGRESS_LOCK = threading.RLock()
 SCAN_PROGRESS = {
@@ -356,6 +358,14 @@ CATEGORY_CATALOG = {
         "Monitör Aksesuarları": ("Monitör Kolu", "VESA", "Işık Barı"),
         "Ağ Ürünleri": ("Wi-Fi 6", "Wi-Fi 7", "Mesh"),
     },
+    "Oyuncu Ekipmanları": {
+        "Oyuncu Monitörü": ("144Hz+", "QHD", "OLED"),
+        "Oyuncu Klavyesi": ("Mekanik", "Kablosuz", "TKL"),
+        "Oyuncu Faresi": ("Kablosuz", "8000 DPI+", "Hafif"),
+        "Oyuncu Kulaklığı": ("Kablosuz", "7.1 Surround", "Mikrofonlu"),
+        "Oyuncu Koltuğu": ("Ergonomik", "Ayarlanabilir", "Kumaş"),
+        "Gamepad": ("Kablosuz", "PC", "Konsol"),
+    },
     "Telefon & Tablet": {
         "Akıllı Telefon": ("256GB", "OLED", "5G"),
         "Tablet": ("128GB", "256GB", "Kalem Destekli"),
@@ -379,6 +389,11 @@ CATEGORY_CATALOG = {
         "Kulaklık": ("Bluetooth", "ANC", "Kablosuz"),
         "Hoparlör": ("Bluetooth", "Soundbar", "Taşınabilir"),
         "Projeksiyon": ("Full HD", "4K", "Taşınabilir"),
+    },
+    "Fotoğraf & Kamera": {
+        "Fotoğraf Makinesi": ("Aynasız", "DSLR", "4K Video"),
+        "Aksiyon Kamerası": ("4K", "Su Geçirmez", "Stabilizasyon"),
+        "Güvenlik Kamerası": ("Wi-Fi", "Gece Görüşü", "Dış Mekan"),
     },
 }
 
@@ -450,15 +465,20 @@ FALLBACK_PRICE_SELECTORS = (
 )
 
 
+def _ensure_database():
+    database.initialize(
+        {
+            "products": PRODUCTS_FILE,
+            "radars": RADARS_FILE,
+            "offers": OFFERS_FILE,
+        }
+    )
+    database.seed_catalog(PRODUCTS_DB_FILE, CATEGORY_CATALOG)
+
+
 def load_products():
     with PRODUCTS_LOCK:
-        database.initialize(
-            {
-                "products": PRODUCTS_FILE,
-                "radars": RADARS_FILE,
-                "offers": OFFERS_FILE,
-            }
-        )
+        _ensure_database()
         products = database.load_records("products")
         if not isinstance(products, list):
             raise RuntimeError("products veritabanı kaydı bir liste olmalıdır.")
@@ -484,13 +504,7 @@ def load_products():
 
 def save_products(products):
     with PRODUCTS_LOCK:
-        database.initialize(
-            {
-                "products": PRODUCTS_FILE,
-                "radars": RADARS_FILE,
-                "offers": OFFERS_FILE,
-            }
-        )
+        _ensure_database()
         database.save_records("products", products)
 
 
@@ -883,15 +897,81 @@ def check_products():
     return results
 
 
+def check_catalog_prices():
+    if not CATALOG_REFRESH_LOCK.acquire(blocking=False):
+        print("Katalog fiyat güncellemesi zaten sürüyor; yeni istek atlandı.", flush=True)
+        return None
+
+    try:
+        offers = load_offers()
+        refreshable = [
+            offer
+            for offer in offers
+            if isinstance(offer, dict)
+            and _valid_product_url(offer.get("url"))
+            and isinstance(offer.get("price"), (int, float))
+        ]
+        updated_by_id = {}
+        with ThreadPoolExecutor(
+            max_workers=min(MAX_CONCURRENT_REQUESTS, len(refreshable) or 1)
+        ) as executor:
+            futures = {
+                executor.submit(
+                    check_price,
+                    offer["url"],
+                    float(offer["price"]),
+                ): offer
+                for offer in refreshable
+            }
+            for future in as_completed(futures):
+                offer = futures[future]
+                result = future.result()
+                current_price = result.get("current_price")
+                if not isinstance(current_price, (int, float)):
+                    print(
+                        f"[WARN] Katalog fiyatı güncellenemedi "
+                        f"({offer.get('store')}): {result.get('message')}",
+                        flush=True,
+                    )
+                    continue
+                checked_at = datetime.now().astimezone().isoformat(
+                    timespec="milliseconds"
+                )
+                updated = {**offer, **result, "last_seen": checked_at}
+                if not result.get("image_url"):
+                    updated["image_url"] = offer.get("image_url")
+                if offer.get("min_price") is not None and offer.get("max_price") is not None:
+                    updated["active"] = (
+                        float(offer["min_price"])
+                        <= current_price
+                        <= float(offer["max_price"])
+                    )
+                updated["price_history"] = _append_price_history(
+                    offer,
+                    current_price,
+                    checked_at,
+                )
+                updated_by_id[offer["id"]] = updated
+
+        if not updated_by_id:
+            return 0
+        updated_offers = [
+            updated_by_id.get(offer["id"], offer)
+            for offer in offers
+        ]
+        _save_json_list(OFFERS_FILE, updated_offers, OFFERS_LOCK)
+        print(
+            f"Katalog fiyatları güncellendi: {len(updated_by_id)} ürün.",
+            flush=True,
+        )
+        return len(updated_by_id)
+    finally:
+        CATALOG_REFRESH_LOCK.release()
+
+
 def _load_json_list(path, lock):
     with lock:
-        database.initialize(
-            {
-                "products": PRODUCTS_FILE,
-                "radars": RADARS_FILE,
-                "offers": OFFERS_FILE,
-            }
-        )
+        _ensure_database()
         collection = {
             RADARS_FILE: "radars",
             OFFERS_FILE: "offers",
@@ -906,13 +986,7 @@ def _load_json_list(path, lock):
 
 def _save_json_list(path, entries, lock):
     with lock:
-        database.initialize(
-            {
-                "products": PRODUCTS_FILE,
-                "radars": RADARS_FILE,
-                "offers": OFFERS_FILE,
-            }
-        )
+        _ensure_database()
         collection = {
             RADARS_FILE: "radars",
             OFFERS_FILE: "offers",
@@ -2077,13 +2151,6 @@ def scan_radars(radar_ids=None):
     return new_offers
 
 
-def _scan_added_radar(radar_id):
-    while RADAR_SCAN_LOCK.locked():
-        time.sleep(0.5)
-    if any(radar["id"] == radar_id for radar in load_radars()):
-        scan_radars([radar_id])
-
-
 def _valid_product_url(value):
     if not isinstance(value, str):
         return False
@@ -2101,17 +2168,10 @@ def _valid_product_url(value):
 
 @asynccontextmanager
 async def lifespan(_application):
-    database.initialize(
-        {
-            "products": PRODUCTS_FILE,
-            "radars": RADARS_FILE,
-            "offers": OFFERS_FILE,
-        }
-    )
+    _ensure_database()
     load_products()
     load_radars()
     load_offers()
-    threading.Thread(target=_run_all_checks, daemon=True).start()
     threading.Thread(target=_periodic_checks, daemon=True).start()
     yield
 
@@ -2158,7 +2218,7 @@ def health_check():
 @app.get("/api/categories")
 def get_categories():
     return {
-        "categories": CATEGORY_CATALOG,
+        "categories": database.load_categories(),
         "monitor_filters": MONITOR_FILTERS,
         "store_groups": STORE_GROUPS,
     }
@@ -2493,13 +2553,13 @@ def _build_radar(payload, existing=None):
             existing.get("created_at", timestamp) if existing else timestamp
         ),
         "last_scan": None,
-        "status": "Radar güncellendi; arka plan taraması sıraya alındı."
+        "status": "Radar güncellendi; yerel katalog sonuçları anında kullanılabilir."
         if existing
-        else "Tarama kuyruğuna alındı.",
+        else "Radar yerel kataloğa kaydedildi.",
     }
 
 
-def _save_and_schedule_radar(radar, background_tasks, *, insert=False):
+def _save_radar(radar, *, insert=False):
     radars = load_radars()
     existing_index = next(
         (index for index, item in enumerate(radars) if item["id"] == radar["id"]),
@@ -2512,20 +2572,15 @@ def _save_and_schedule_radar(radar, background_tasks, *, insert=False):
     else:
         radars[existing_index] = radar
     _save_json_list(RADARS_FILE, radars, RADARS_LOCK)
-    background_tasks.add_task(_scan_added_radar, radar["id"])
     return radar
 
 
 @app.post("/api/radars", status_code=201)
-async def post_radar(request: Request, background_tasks: BackgroundTasks):
+async def post_radar(request: Request):
     payload = await _read_api_json(request)
     try:
         radar = _build_radar(payload)
-        _save_and_schedule_radar(
-            radar,
-            background_tasks,
-            insert=True,
-        )
+        _save_radar(radar, insert=True)
     except (TypeError, ValueError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except RuntimeError as error:
@@ -2534,11 +2589,7 @@ async def post_radar(request: Request, background_tasks: BackgroundTasks):
 
 
 @app.put("/api/radars/{radar_id}")
-async def update_radar(
-    radar_id: str,
-    request: Request,
-    background_tasks: BackgroundTasks,
-):
+async def update_radar(radar_id: str, request: Request):
     payload = await _read_api_json(request)
     try:
         radars = load_radars()
@@ -2546,7 +2597,7 @@ async def update_radar(
         if existing is None:
             raise HTTPException(status_code=404, detail="Radar bulunamadı.")
         radar = _build_radar(payload, existing)
-        _save_and_schedule_radar(radar, background_tasks)
+        _save_radar(radar)
     except (TypeError, ValueError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except RuntimeError as error:
@@ -2648,6 +2699,7 @@ def delete_product(product_id: str):
 
 def _run_all_checks():
     check_products()
+    check_catalog_prices()
     scan_radars()
 
 
@@ -2664,7 +2716,8 @@ def main():
     address = f"http://{HOST}:{PORT}"
     print(f"Arayüz hazır: {address}", flush=True)
     print(
-        f"İlk fiyat kontrolü arka planda başlatıldı. SQLite veritabanı: "
+        f"Yerel katalog hazır; sonraki fiyat kontrolü 10 dakika içinde başlar. "
+        f"SQLite veritabanı: "
         f"{database.DATABASE_FILE}",
         flush=True,
     )

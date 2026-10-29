@@ -536,7 +536,7 @@
       if (offerSearchStore.value) params.set("store", offerSearchStore.value);
       offerSearchResults = [];
       offerSearchStatus.removeAttribute("data-error");
-      offerSearchStatus.textContent = "Ürünler aranıyor...";
+      offerSearchStatus.textContent = "Yerel katalog filtreleniyor...";
       try {
         const results = await requestJson(`/api/search?${params.toString()}`);
         if (requestNumber !== offerSearchRequest) return;
@@ -1763,8 +1763,8 @@
         setFormStatus(
           radarStatus,
           wasEditing
-            ? "Radar güncellendi; mağaza araması arka planda başladı."
-            : "Radar kaydedildi; mağaza araması arka planda başladı."
+            ? "Radar güncellendi; fiyatlar yerel katalogdan listelenir."
+            : "Radar kaydedildi; ürün aramaları yerel katalogdan yapılır."
         );
       } catch (error) {
         setFormStatus(radarStatus, `Radar kaydedilemedi: ${error.message}`, true);
@@ -1782,7 +1782,7 @@
       } catch (error) {
         setFormStatus(radarStatus, `Tarama başlatılamadı: ${error.message}`, true);
       } finally {
-        window.setTimeout(() => { button.disabled = false; }, 2500);
+        button.disabled = false;
       }
     });
 

@@ -1,0 +1,2777 @@
+{
+  "source_note": "Snapshot of products already collected by this installation; prices can be stale and are refreshed by the background scanner.",
+  "categories": {
+    "Bilgisayar & Donanım": {
+      "Masaüstü Bilgisayar": [
+        "Gaming",
+        "İş İstasyonu",
+        "Hazır Sistem"
+      ],
+      "Monitör": [],
+      "Ekran Kartı": [
+        "RTX 4060",
+        "RTX 4070",
+        "RX 7600"
+      ],
+      "Laptop": [
+        "RTX 4060",
+        "RTX 4070",
+        "16GB RAM",
+        "OLED"
+      ],
+      "İşlemci": [
+        "Ryzen 7",
+        "Intel Core i7",
+        "Ryzen 5"
+      ],
+      "Anakart": [
+        "AM5",
+        "LGA1700",
+        "DDR5"
+      ],
+      "Bellek (RAM)": [
+        "16GB",
+        "32GB",
+        "DDR5"
+      ],
+      "SSD & Depolama": [
+        "1TB NVMe",
+        "2TB NVMe",
+        "Harici SSD"
+      ],
+      "Bilgisayar Kasası": [
+        "Mini Tower",
+        "Mid Tower",
+        "Full Tower"
+      ],
+      "Güç Kaynağı": [
+        "650W",
+        "750W",
+        "80+ Gold"
+      ],
+      "Soğutma": [
+        "Sıvı Soğutma",
+        "240mm",
+        "360mm"
+      ]
+    },
+    "Çevre Birimleri": {
+      "Klavye": [
+        "Mekanik",
+        "Kablosuz",
+        "TKL"
+      ],
+      "Oyuncu Faresi": [
+        "Kablosuz",
+        "8000 DPI+",
+        "Hafif"
+      ],
+      "Kulaklık & Mikrofon": [
+        "Kablosuz",
+        "7.1 Surround",
+        "ANC"
+      ],
+      "Webcam": [
+        "1080p",
+        "4K",
+        "Otomatik Odaklama"
+      ],
+      "Yazıcı & Tarayıcı": [
+        "Lazer",
+        "Tanklı",
+        "Çok Fonksiyonlu"
+      ],
+      "Monitör Aksesuarları": [
+        "Monitör Kolu",
+        "VESA",
+        "Işık Barı"
+      ],
+      "Ağ Ürünleri": [
+        "Wi-Fi 6",
+        "Wi-Fi 7",
+        "Mesh"
+      ]
+    },
+    "Oyuncu Ekipmanları": {
+      "Oyuncu Monitörü": [
+        "144Hz+",
+        "QHD",
+        "OLED"
+      ],
+      "Oyuncu Klavyesi": [
+        "Mekanik",
+        "Kablosuz",
+        "TKL"
+      ],
+      "Oyuncu Faresi": [
+        "Kablosuz",
+        "8000 DPI+",
+        "Hafif"
+      ],
+      "Oyuncu Kulaklığı": [
+        "Kablosuz",
+        "7.1 Surround",
+        "Mikrofonlu"
+      ],
+      "Oyuncu Koltuğu": [
+        "Ergonomik",
+        "Ayarlanabilir",
+        "Kumaş"
+      ],
+      "Gamepad": [
+        "Kablosuz",
+        "PC",
+        "Konsol"
+      ]
+    },
+    "Telefon & Tablet": {
+      "Akıllı Telefon": [
+        "256GB",
+        "OLED",
+        "5G"
+      ],
+      "Tablet": [
+        "128GB",
+        "256GB",
+        "Kalem Destekli"
+      ],
+      "Akıllı Saat": [
+        "GPS",
+        "LTE",
+        "AMOLED"
+      ],
+      "Telefon Aksesuarları": [
+        "Hızlı Şarj",
+        "Kablosuz Şarj",
+        "Powerbank"
+      ]
+    },
+    "Konsol & Oyun": {
+      "Oyun Konsolu": [
+        "PlayStation 5",
+        "Xbox Series X",
+        "Nintendo Switch"
+      ],
+      "Konsol Oyunları": [
+        "PlayStation",
+        "Xbox",
+        "Nintendo Switch"
+      ],
+      "VR Gözlük": [
+        "Meta Quest",
+        "PlayStation VR2",
+        "256GB"
+      ],
+      "Gamepad & Aksesuar": [
+        "Kablosuz Gamepad",
+        "Direksiyon Seti",
+        "Şarj İstasyonu"
+      ]
+    },
+    "Ev Aletleri": {
+      "Robot Süpürge": [
+        "Lidar",
+        "Otomatik Boşaltma",
+        "Paspaslı"
+      ],
+      "Elektrikli Süpürge": [
+        "Dikey",
+        "Kablosuz",
+        "HEPA Filtre"
+      ],
+      "Kahve Makinesi": [
+        "Tam Otomatik",
+        "Espresso",
+        "Filtre Kahve"
+      ],
+      "Küçük Ev Aletleri": [
+        "Airfryer",
+        "Blender",
+        "Mutfak Robotu"
+      ]
+    },
+    "TV & Ses": {
+      "Televizyon": [
+        "55 inç",
+        "65 inç",
+        "OLED"
+      ],
+      "Kulaklık": [
+        "Bluetooth",
+        "ANC",
+        "Kablosuz"
+      ],
+      "Hoparlör": [
+        "Bluetooth",
+        "Soundbar",
+        "Taşınabilir"
+      ],
+      "Projeksiyon": [
+        "Full HD",
+        "4K",
+        "Taşınabilir"
+      ]
+    },
+    "Fotoğraf & Kamera": {
+      "Fotoğraf Makinesi": [
+        "Aynasız",
+        "DSLR",
+        "4K Video"
+      ],
+      "Aksiyon Kamerası": [
+        "4K",
+        "Su Geçirmez",
+        "Stabilizasyon"
+      ],
+      "Güvenlik Kamerası": [
+        "Wi-Fi",
+        "Gece Görüşü",
+        "Dış Mekan"
+      ]
+    }
+  },
+  "products": [
+    {
+      "id": "0bb717af-bcdb-4936-ac3d-339b5dfe7f84",
+      "title": "Fazeon 23.8' X24F182S 1ms 180Hz Fhd IPS Gamıng Monıtor",
+      "description": "Fazeon 23.8' X24F182S 1ms 180Hz Fhd IPS Gamıng Monıtor Ürün puanı 4.4, 30 değerlendirme 4,4 ( 30 ) Kampanya: Peşin fiyatına 6 x 1.163 TL Peşin fiyatına 6 x 1.163 TL Sepete özel 6.998,88 TL 6.978 ,88 TL",
+      "url": "https://www.hepsiburada.com/fazeon-23-8-x24f182s-1ms-180hz-fhd-ips-gaming-monitor-pm-HBC0000G0F6K5",
+      "price": 1163.0,
+      "store": "Hepsiburada",
+      "image_url": "https://productimages.hepsiburada.net/s/777/222-222/110001857276615.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 1163.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "daad9128-fb9d-4950-9ec3-e880bde277ab",
+      "title": "MSI Msı 24.5\" Mag 255F E20 1920X1080 (Fhd) 16:9 Flat Rapıd IPS 200HZ 0.5ms (Gtg) Freesync Premıum Gamıng Monıtor",
+      "description": "MSI Msı 24.5\" Mag 255F E20 1920X1080 (Fhd) 16:9 Flat Rapıd IPS 200HZ 0.5ms (Gtg) Freesync Premıum Gamıng Monıtor Ürün puanı 4.5, 275 değerlendirme 4,5 ( 275 ) Kampanya: Peşin fiyatına 3 x 1.733 TL Peşin fiyatına 3 x 1.733 TL 5.199 TL",
+      "url": "https://www.hepsiburada.com/msi-24-5-mag-255f-e20-1920x1080-fhd-16-9-flat-rapid-ips-200hz-0-5ms-gtg-freesync-premium-gaming-monitor-pm-HBC00009VTD8F",
+      "price": 1733.0,
+      "store": "Hepsiburada",
+      "image_url": "https://productimages.hepsiburada.net/s/777/222-222/110001179666398.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 1733.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "c6f344be-0623-42d3-9752-c16eacedd882",
+      "title": "MSI Mag 244F 23.8 inç 200Hz 0.5ms Full HD FreeSync Premium Rapid IPS Gaming Monitör",
+      "description": "MSI Mag 244F 23.8 inç 200Hz 0.5ms Full HD FreeSync Premium Rapid IPS Gaming Monitör Ürün puanı 4.6, 64 değerlendirme 4,6 ( 64 ) Kampanya: Peşin fiyatına 3 x 1.734 TL Peşin fiyatına 3 x 1.734 TL 5.204 ,29 TL",
+      "url": "https://www.hepsiburada.com/msi-23-8-mag-244f-1920x1080-fhd-16-09-rapid-ips-flat-200hz-0-5ms-freesync-gaming-monitor-pm-HBC00008P8Z9V",
+      "price": 1734.0,
+      "store": "Hepsiburada",
+      "image_url": "https://productimages.hepsiburada.net/s/777/222-222/110001061907774.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 1734.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "5da4258e-087f-4aed-9ee5-9970484356a9",
+      "title": "Samsung Odyssey G5 32\" IPS 180 Hz 1 ms QHD Pivot Gaming Monitör LS32FG502EUXUF",
+      "description": "Samsung Odyssey G5 32\" IPS 180 Hz 1 ms QHD Pivot Gaming Monitör LS32FG502EUXUF Ürün puanı 4.5, 35 değerlendirme 4,5 ( 35 ) Kampanya: Peşin fiyatına 7 x 1.757 TL Peşin fiyatına 7 x 1.757 TL 12.299 TL",
+      "url": "https://www.hepsiburada.com/samsung-odyssey-g5-32-ips-180-hz-1-ms-qhd-pivot-gaming-monitor-ls32fg502euxuf-pm-HBC0000C1VS96",
+      "price": 1757.0,
+      "store": "Hepsiburada",
+      "image_url": "https://productimages.hepsiburada.net/s/777/222-222/110001431413507.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 1757.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "f41ed95b-065a-4d79-83b6-4f709847fa52",
+      "title": "Samsung 27\" Odyssey G3 LS27DG302EUXUF 1 Ms 180 Hz FHD (HDMI+DP) Pivot Gaming Monitör",
+      "description": "Samsung 27\" Odyssey G3 LS27DG302EUXUF 1 Ms 180 Hz FHD (HDMI+DP) Pivot Gaming Monitör Ürün puanı 4.7, 642 değerlendirme 4,7 ( 642 ) Kampanya: Peşin fiyatına 3 x 1.993 TL Peşin fiyatına 3 x 1.993 TL Kampanya: 30 günün en düşük fiyatı 30 günün en düşük fiyatı 6.439,08 TL % 7 5.979 ,08 TL",
+      "url": "https://www.hepsiburada.com/samsung-27-odyssey-g3-ls27dg302euxuf-1-ms-180-hz-fhd-hdmi-dp-pivot-gaming-monitor-p-HBCV00006VEYCB",
+      "price": 1993.0,
+      "store": "Hepsiburada",
+      "image_url": "https://productimages.hepsiburada.net/s/777/222-222/110001138634451.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 1993.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "8575cc66-3b72-4651-b364-70cc8512ebb1",
+      "title": "LG Lg Ultragear™ OLED Gx7 26.5\" 27GX700A-B 280Hz 0.03MS(GTG) Qhd OLED Pivot Vesa Displayhdr True Black 500 Gaming Monitör",
+      "description": "LG Lg Ultragear™ OLED Gx7 26.5\" 27GX700A-B 280Hz 0.03MS(GTG) Qhd OLED Pivot Vesa Displayhdr True Black 500 Gaming Monitör Ürün puanı 4.4, 29 değerlendirme 4,4 ( 29 ) Kampanya: Peşin fiyatına 7 x 3.857 TL Peşin fiyatına 7 x 3.857 TL 26.999 TL",
+      "url": "https://www.hepsiburada.com/lg-ultragear-oled-gx7-26-5-27gx700a-b-280hz-0-03ms-gtg-qhd-oled-pivot-vesa-displayhdr-true-black-500-gaming-monitor-pm-HBC0000CS8KUW",
+      "price": 3857.0,
+      "store": "Hepsiburada",
+      "image_url": "https://productimages.hepsiburada.net/s/777/222-222/110001512071492.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 3857.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "ba32c7e3-619f-4990-9fc8-2cd6e96fbf30",
+      "title": "FAZEON 23.8\" X24F182S 0.5Ms 180Hz FHD IPS GAMING MONITOR",
+      "description": "0,0 X24F182S FAZEON 23.8\" X24F182S 0.5Ms 180Hz FHD IPS GAMING MONITOR 3.999 TL",
+      "url": "https://www.vatanbilgisayar.com/fazeon-23-8-x24f182s-1ms-180hz-fhd-ips-gaming-monitor.html",
+      "price": 3999.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/fazeon/thumb/157223-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 3999.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "1625171f-d938-4e28-900b-eb9abb5652dc",
+      "title": "Samsung Odyssey G3 LS24DG302EUXUF 24\" Oyuncu Monitörü, 1ms, VA, 180Hz, FreeSync Premium, HAS+Pivot, Eye Saver Mode, Flicker Free, Game Mode",
+      "description": "Samsung Odyssey G3 LS24DG302EUXUF 24\" Oyuncu Monitörü, 1ms, VA, 180Hz, FreeSync Premium, HAS+Pivot, Eye Saver Mode, Flicker Free, Game Mode 4,2 5 yıldız üzerinden 4,2 (126) Fiyat, ürün sayfası 4.628,00 TL 4.628 , 00 TL ÜCRETSİZ teslimat 6 Kas Cum veya en hızlı teslimat 2 Kas Pzt Sepete ekle Enerji Verimlilik Sınıfı: G",
+      "url": "https://www.amazon.com.tr/Samsung-Odyssey-LS24DG302EUXUF-Monit%C3%B6r%C3%BC-FreeSync/dp/B0D3VFWZ5X/ref=sr_1_8?dib=eyJ2IjoiMSJ9.g2VAbMHlFC2cslqGjWmpO9HpqA-KoH0IL5DRpR2XdtsAPzx2AFM2vuV42ErcFBVT4ROK3q7VIR_C5LS--d7whH5fF1Aq8_uLQuM_VoodZ-CmKT7gaVsuK53n-tCb17_CDJlfbKB5H2PxUlZ8YexkEUP2akZBq0Wtop-4Wz8Mnc_MSWg3Uy5eO7OEHE1qWgMmlSlk6st277B0ff92Qj3FeedBKk-R9JVkTWSGJD7XU7v5VLQaFQcKGf0nM-tXHjhtpSrrPwRUTK3VuwCJ0kChz9f4tKAb4C9o9WZJKYo5RxE.2AqCwumMsgG2hRQKIsKG-f17PkxWf6Ycmn0T2iYhEQ4&dib_tag=se&keywords=Monit%C3%B6r&qid=1793264928&sr=8-8",
+      "price": 4628.0,
+      "store": "Amazon",
+      "image_url": "https://m.media-amazon.com/images/I/81oI7oNsDpL._AC_UL320_.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 4628.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "de65f127-d7c9-4ec2-b2c3-f56a4ec9a524",
+      "title": "Dell SE2425HG 23.8 inç 200Hz 1ms Full HD FreeSync Premium IPS Gaming Monitör",
+      "description": "Dell SE2425HG 23.8 inç 200Hz 1ms Full HD FreeSync Premium IPS Gaming Monitör 4,6 5 yıldız üzerinden 4,6 (250) Geçen ay 100 adetten fazla satın alındı Fiyat, ürün sayfası 4.699,00 TL 4.699 , 00 TL ÜCRETSİZ teslimat 6 Kas Cum veya en hızlı teslimat 2 Kas Pzt Sepete ekle E A G Ürün fişi Enerji Sınıfı Ürün fişi",
+      "url": "https://www.amazon.com.tr/Dell-SE2425HG-200Hz-FreeSync-Premium/dp/B0FHHVD75B/ref=sr_1_10?dib=eyJ2IjoiMSJ9.g2VAbMHlFC2cslqGjWmpO9HpqA-KoH0IL5DRpR2XdtsAPzx2AFM2vuV42ErcFBVT4ROK3q7VIR_C5LS--d7whH5fF1Aq8_uLQuM_VoodZ-CmKT7gaVsuK53n-tCb17_CDJlfbKB5H2PxUlZ8YexkEUP2akZBq0Wtop-4Wz8Mnc_MSWg3Uy5eO7OEHE1qWgMmlSlk6st277B0ff92Qj3FeedBKk-R9JVkTWSGJD7XU7v5VLQaFQcKGf0nM-tXHjhtpSrrPwRUTK3VuwCJ0kChz9f4tKAb4C9o9WZJKYo5RxE.2AqCwumMsgG2hRQKIsKG-f17PkxWf6Ycmn0T2iYhEQ4&dib_tag=se&keywords=Monit%C3%B6r&qid=1793264928&sr=8-10",
+      "price": 4699.0,
+      "store": "Amazon",
+      "image_url": "https://m.media-amazon.com/images/I/71bGZo-TFpL._AC_UL320_.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 4699.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "165b2435-2108-49db-9bfa-f1d975f8d404",
+      "title": "SAMSUNG 24\" ODYSSEY G3 LS24DG302EUXUF 1Ms 180Hz FULL HD GAMING MONITOR",
+      "description": "FIRSAT ÜRÜNÜ 4,9 LS24DG302EUXUF SAMSUNG 24\" ODYSSEY G3 LS24DG302EUXUF 1Ms 180Hz FULL HD GAMING MONITOR Son 10 Günün En Düşük Fiyatı! 4.699 TL 4.999TL",
+      "url": "https://www.vatanbilgisayar.com/samsung-24-odyssey-g3-1ms-180hz-full-hd-freesync-gaming-monitor.html",
+      "price": 4699.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/samsung/thumb/147020-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 4699.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "d8251f7c-2d66-4cd3-a7bc-b8079adb1bee",
+      "title": "Gamebooster Edge Ef18 23.8\" 180hz 0.5ms Hdmı+dp Fhd Va Panel Gaming Monitör",
+      "description": "Gamebooster Edge Ef18 23.8\" 180hz 0.5ms Hdmı+dp Fhd Va Panel Gaming Monitör",
+      "url": "https://www.n11.com/urun/gamebooster-edge-ef18-238-180hz-05ms-hdmidp-fhd-va-panel-gaming-monitor-131941313",
+      "price": 4783.08,
+      "store": "N11",
+      "image_url": "https://n11scdn.akamaized.net/a1/640/04/94/85/90/IMG-1819518365858302150.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 4783.08
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "c0246215-6ed6-41d5-a7e4-60336f987a38",
+      "title": "MSI 24.5'' G255F 1Ms(GTG) 180Hz FHD IPS GAMING MONİTÖR",
+      "description": "4,7 G255F MSI 24.5'' G255F 1Ms(GTG) 180Hz FHD IPS GAMING MONİTÖR 4.949 TL",
+      "url": "https://www.vatanbilgisayar.com/msi-g255f-fhd-24-5-180hz-1ms-mprt-a-sync-oyuncu-monitor.html",
+      "price": 4949.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/msi/thumb/144374-1-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 4949.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "cae6345b-5942-43bc-b3ce-dd0ea0715e72",
+      "title": "MSI 24.5 MAG 256F E20, Gaming Monitör, FHD, 16:9, Flat, Rapid IPS, 200Hz, 0.5ms, (GtG Min.), FreeSync Premium",
+      "description": "MSI 24.5 MAG 256F E20, Gaming Monitör, FHD, 16:9, Flat, Rapid IPS, 200Hz, 0.5ms, (GtG Min.), FreeSync Premium 365 günün en düşük fiyatı Fiyat, ürün sayfası 4.849,03 TL 4.849 , 03 TL Önceki: 4.999,00 TL Önceki: 4.999,00 TL 4.999,00TL ÜCRETSİZ teslimat 4 Kas Çar Stokta sadece 19 adet kaldı. Sepete ekle Enerji Verimlilik Sınıfı: F",
+      "url": "https://www.amazon.com.tr/MSI-24-5-256F-Gaming-Monit%C3%B6r/dp/B0GYSVDQ3H/ref=sr_1_51?dib=eyJ2IjoiMSJ9.su2msUx8r7l0J4L9IUal_uyeB_G6nwGSx2TfhVPbp4GNlXtfBWHa0gwYDSh-x4wpppxzzCxrHqr_v_eGYga5p2m2WemQcJhEnY7FvdwStnOTW6D5l3UhCN8kAcyak58h35EDTSP2yRGJhcYo80L8pwDu8TMFblAJ7edla2hnBYKZKwSMqkNJ4onbC-v5jLzmmNMBPwOSJ4X6lPnT3_aj2Vqfy7fwLw1vsJbFbvqpPfR6tznjshxODEQBT5GqgNrMUCCcpjQCxfoeqUurF2ZUKKhzeLz3c5AOzDglfj-c-MQ.wu4TuJ6x7F4ENnYtsKhQvY6SWFBpw999wLL33hoggjI&dib_tag=se&keywords=Monit%C3%B6r&qid=1793264930&sr=8-51",
+      "price": 4999.0,
+      "store": "Amazon",
+      "image_url": "https://m.media-amazon.com/images/I/81eGQe1kN7L._AC_UL320_.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 4999.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "2dc33035-a48d-41cc-a444-899c772fbf0d",
+      "title": "FAZEON 27\" X27F182S 0.5Ms 180Hz FHD IPS GAMING MONITOR",
+      "description": "0,0 X27F182S FAZEON 27\" X27F182S 0.5Ms 180Hz FHD IPS GAMING MONITOR 5.199 TL",
+      "url": "https://www.vatanbilgisayar.com/fazeon-27-x27f182s-1ms-180hz-fhd-ips-gaming-monitor.html",
+      "price": 5199.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/fazeon/thumb/157866-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 5199.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "c7304459-266e-4a0b-8ff7-8bce65ee6950",
+      "title": "MSI 23,8'' MAG 242F 0.5Ms(GTG) 200Hz FHD IPS GAMING MONİTÖR",
+      "description": "4,9 MAG 242F MSI 23,8'' MAG 242F 0.5Ms(GTG) 200Hz FHD IPS GAMING MONİTÖR 5.259 TL",
+      "url": "https://www.vatanbilgisayar.com/msi-23-8-mag-242f-0-5ms-gtg-200hz-fhd-ips-gaming-monitor.html",
+      "price": 5259.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/msi/thumb/156139-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 5259.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "fd7184c7-2365-4685-b575-29377549745e",
+      "title": "ASUS 23,8\" TUF GAMING VG249Q5R 0.3Ms 200Hz FULL HD IPS GAMING MONITOR",
+      "description": "FIRSAT ÜRÜNÜ 4,9 VG249Q5R ASUS 23,8\" TUF GAMING VG249Q5R 0.3Ms 200Hz FULL HD IPS GAMING MONITOR Son 10 Günün En Düşük Fiyatı! 5.299 TL 5.479TL",
+      "url": "https://www.vatanbilgisayar.com/asus-23-8-tuf-gaming-vg249q5r-0-3ms-200hz-full-hd-ips-gaming-monitor.html",
+      "price": 5299.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/asus/thumb/0012-katman-12_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 5299.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "db1d70d2-b074-450f-b4fb-6969a2151ca8",
+      "title": "Casper Excalibur 23.6'' 200Hz 1MS(MPRT) Curved Oyuncu Monitörü",
+      "description": "4,8 M.E236FVC-D Casper Excalibur 23.6'' 200Hz 1MS(MPRT) Curved Oyuncu Monitörü 5.799 TL",
+      "url": "https://www.vatanbilgisayar.com/casper-excalibur-23-6-200hz-1ms-mprt-curved-oyuncu-monitoru.html",
+      "price": 5799.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/casper/thumb/150751-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 5799.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "67d24b7a-1252-4169-9117-0c8f87e34157",
+      "title": "Lenovo Legion 24-10 23.8\" 0.5 ms Full HD Pivot IPS 240 Hz Oyuncu Monitörü 68C4GAC4TK",
+      "description": "Lenovo Legion 24-10 23.8\" 0.5 ms Full HD Pivot IPS 240 Hz Oyuncu Monitörü 68C4GAC4TK",
+      "url": "https://www.n11.com/urun/lenovo-legion-24-10-238-05-ms-full-hd-pivot-ips-240-hz-oyuncu-monitoru-68c4gac4tk-126892123",
+      "price": 5999.0,
+      "store": "N11",
+      "image_url": "https://n11scdn.akamaized.net/a1/640/06/10/44/18/IMG-4174086811207025030.png",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 5999.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "7c0b2a95-f902-4834-9e41-cee522380bdc",
+      "title": "Lenovo Legion 27-10 27\" 240 Hz 0.5 Ms 2xhdmı+dp Fhd Ips Monitör 68c5gac4tk",
+      "description": "Lenovo Legion 27-10 27\" 240 Hz 0.5 Ms 2xhdmı+dp Fhd Ips Monitör 68c5gac4tk",
+      "url": "https://www.n11.com/urun/lenovo-legion-27-10-27-240-hz-05-ms-2xhdmidp-fhd-ips-monitor-68c5gac4tk-120394772",
+      "price": 6049.0,
+      "store": "N11",
+      "image_url": "https://n11scdn.akamaized.net/a1/640/09/73/39/23/IMG-8986812223998006817.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 6049.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "d0385c18-eaf4-4ec6-b2f2-1a745917b6b0",
+      "title": "Samsung Odyssey G3 LS27DG302EUXUF 27\" 1 Ms 180 Hz Full HD Pivot Oyuncu Monitörü",
+      "description": "Samsung Odyssey G3 LS27DG302EUXUF 27\" 1 Ms 180 Hz Full HD Pivot Oyuncu Monitörü",
+      "url": "https://www.n11.com/urun/samsung-odyssey-g3-ls27dg302euxuf-27-1-ms-180-hz-full-hd-pivot-oyuncu-monitoru-63681861",
+      "price": 6163.08,
+      "store": "N11",
+      "image_url": "https://n11scdn.akamaized.net/a1/640/08/01/07/90/IMG-4997781319560955455.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 6163.08
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "62bb4b1e-d833-459b-89dd-85ef1f9384ab",
+      "title": "Asus Tuf Gaming Vg259qm5a 24.5\" 240hz 0.3ms Hdmı+dp Hdr Fullhd G-sync Freesync Ips Vesa Monitör",
+      "description": "Asus Tuf Gaming Vg259qm5a 24.5\" 240hz 0.3ms Hdmı+dp Hdr Fullhd G-sync Freesync Ips Vesa Monitör",
+      "url": "https://www.n11.com/urun/asus-tuf-gaming-vg259qm5a-245-240hz-03ms-hdmidp-hdr-fullhd-g-sync-freesync-ips-vesa-monitor-109605317",
+      "price": 6274.4,
+      "store": "N11",
+      "image_url": "https://n11scdn.akamaized.net/a1/640/13/45/29/68/IMG-872525943039900969.png",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 6274.4
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "03594ccb-39db-4014-b604-faf6d2ab4442",
+      "title": "Lenovo Legion 24-15 23.8\" 0.5 Ms Mprt 240hz 2xhdmı+displayport Hdr10 Amd Freesync Premium Ips Panel Fhd Wled Pivot Gaming Monitör 67e7gac4tk",
+      "description": "Lenovo Legion 24-15 23.8\" 0.5 Ms Mprt 240hz 2xhdmı+displayport Hdr10 Amd Freesync Premium Ips Panel Fhd Wled Pivot Gaming Monitör 67e7gac4tk",
+      "url": "https://www.n11.com/urun/lenovo-legion-24-15-238-05-ms-mprt-240hz-2xhdmidisplayport-hdr10-amd-freesync-premium-ips-panel-fhd-wled-pivot-gaming-monitor-67e7gac4tk-129540018",
+      "price": 6485.08,
+      "store": "N11",
+      "image_url": "https://n11scdn.akamaized.net/a1/640/01/41/96/00/IMG-5381267159484607478.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 6485.08
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "75b8f6f9-a8b2-4129-b4c3-e29f3f4d9192",
+      "title": "Asus 27\" Tuf Gaming Vg279q5a 0.3ms 200hz Fhd Fast Ips Oyuncu Monitörü",
+      "description": "ÜCRETSİZ KARGO Asus 27\" Tuf Gaming Vg279q5a 0.3ms 200hz Fhd Fast Ips Oyuncu Monitörü (1) SÜPER 6.521 TL SEPETTE 5.999,32 TL",
+      "url": "https://www.n11.com/urun/asus-27-tuf-gaming-vg279q5a-03ms-200hz-fhd-fast-ips-oyuncu-monitoru-135034660",
+      "price": 6521.0,
+      "store": "N11",
+      "image_url": "https://n11scdn.akamaized.net/a1/org/26/02/10/88/23/47/76/52/13/36/26/11/74752436612177413424.png",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 6521.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "86941070-1c18-485c-b046-f27fb8cd4d1b",
+      "title": "LG 24.4\" ULTRAGEAR 25G523B-B 1Ms 200Hz FHD IPS GAMING MONITOR",
+      "description": "5,0 25G523B-B LG 24.4\" ULTRAGEAR 25G523B-B 1Ms 200Hz FHD IPS GAMING MONITOR 6.539 TL",
+      "url": "https://www.vatanbilgisayar.com/lg-24-4-ultragear-25g523b-b-1ms-200hz-fhd-ips-gaming-monitor.html",
+      "price": 6539.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/lg/thumb/159255-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 6539.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "52d19ada-b165-4f3a-92e4-1671c8fc11db",
+      "title": "ASUS 23,8\" TUF GAMING VG249QM5A 0.3Ms 240Hz FULL HD IPS GAMING MONITOR",
+      "description": "FIRSAT ÜRÜNÜ 4,5 VG249QM5A ASUS 23,8\" TUF GAMING VG249QM5A 0.3Ms 240Hz FULL HD IPS GAMING MONITOR Son 10 Günün En Düşük Fiyatı! 6.599 TL",
+      "url": "https://www.vatanbilgisayar.com/asus-23-8-tuf-gaming-vg249qm5a-0-3ms-240hz-full-hd-ips-gaming-monitor.html",
+      "price": 6599.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/asus/thumb/0021-katman-3_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 6599.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "db0a87b4-b735-407d-abb6-04a987009759",
+      "title": "ASUS 27\" TUF GAMING VG279Q5A 0.3Ms 200Hz FULL HD IPS GAMING MONITOR",
+      "description": "4,8 VG279Q5A ASUS 27\" TUF GAMING VG279Q5A 0.3Ms 200Hz FULL HD IPS GAMING MONITOR 6.699 TL",
+      "url": "https://www.vatanbilgisayar.com/asus-27-tuf-gaming-vg279q5a-0-3ms-200hz-full-hd-ips-gaming-monitor.html",
+      "price": 6699.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/asus/thumb/153837-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 6699.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "a3c4a466-fed5-48eb-bf03-2d38090f8a63",
+      "title": "Samsung Odyssey G4 LS25BG400EUXUF 25\" 1 MS 240 Hz HDR10 G-Sync Full HD IPS LED Monitör",
+      "description": "ÜCRETSİZ KARGO Samsung Odyssey G4 LS25BG400EUXUF 25\" 1 MS 240 Hz HDR10 G-Sync Full HD IPS LED Monitör (27) SÜPER 10 günün en düşük fiyatı! 6.733,09 TL 6.289 TL",
+      "url": "https://www.n11.com/urun/samsung-odyssey-g4-ls25bg400euxuf-25-1-ms-240-hz-hdr10-g-sync-full-hd-ips-led-monitor-33722033",
+      "price": 6733.09,
+      "store": "N11",
+      "image_url": "https://n11scdn.akamaized.net/a1/org/26/05/25/80/70/44/53/01/81/95/20/46/4835826328757518261.png",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 6733.09
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "83432f22-0b3a-40cd-8859-b00a9e9fa795",
+      "title": "FAZEON 27\" X27F181QS 0.5Ms 180Hz QHD IPS GAMING MONITOR",
+      "description": "5,0 X27F181QS FAZEON 27\" X27F181QS 0.5Ms 180Hz QHD IPS GAMING MONITOR 6.999 TL",
+      "url": "https://www.vatanbilgisayar.com/fazeon-23-8-x27f181qs-0-5ms-180hz-qhd-ips-gaming-monitor.html",
+      "price": 6999.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/fazeon/thumb/157865-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 6999.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "54fe2658-2f01-47f3-bd9e-4aff211a066b",
+      "title": "LG 27\" ULTRAGEAR 27G523B-B 1Ms 200Hz FHD IPS GAMING MONITOR",
+      "description": "0,0 27G523B-B LG 27\" ULTRAGEAR 27G523B-B 1Ms 200Hz FHD IPS GAMING MONITOR 7.549 TL",
+      "url": "https://www.vatanbilgisayar.com/lg-27-ultragear-27g523b-b-1ms-200hz-fhd-ips-gaming-monitor.html",
+      "price": 7549.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/lg/thumb/159254-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 7549.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "1e3125ba-43b6-4ddc-9230-12a9becc460a",
+      "title": "LENOVO 27\" LEGION 27-10 0.5Ms 240Hz FULL HD IPS GAMING MONITOR",
+      "description": "4,8 68C5GAC4TK LENOVO 27\" LEGION 27-10 0.5Ms 240Hz FULL HD IPS GAMING MONITOR 7.999 TL",
+      "url": "https://www.vatanbilgisayar.com/lenovo-27-legion-27-10-0-5ms-240hz-full-hd-ips-gaming-monitor.html",
+      "price": 7999.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/lenovo/thumb/154466-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 7999.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "bae7c0d2-3e2e-4401-9dc1-aaf41da4b34f",
+      "title": "SAMSUNG 27\" ODYSSEY G5 1Ms 200Hz 2K IPS GAMING MONITOR",
+      "description": "5,0 LS27FG530EUXUF SAMSUNG 27\" ODYSSEY G5 1Ms 200Hz 2K IPS GAMING MONITOR 8.799 TL",
+      "url": "https://www.vatanbilgisayar.com/samsung-27-odyssey-g5-1ms-200hz-2k-ips-gaming-monitor.html",
+      "price": 8799.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/samsung/thumb/155259-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 8799.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "4da2fd72-e0d4-41e0-810e-e7d100c83fe7",
+      "title": "Lenovo Legion R27qe Gen 2 27\" 0.5 Ms Mprt 200hz 2xhdmı-displayport Hdr10 Amd Freesync Premium Ips Panel Qhd 2560 X 1440 Pivot Gaming Monitör 68c7gac3tk",
+      "description": "ÜCRETSİZ KARGO Lenovo Legion R27qe Gen 2 27\" 0.5 Ms Mprt 200hz 2xhdmı-displayport Hdr10 Amd Freesync Premium Ips Panel Qhd 2560 X 1440 Pivot Gaming Monitör 68c7gac3tk (3) SÜPER 9.199 TL SEPETTE 8.999 TL",
+      "url": "https://www.n11.com/urun/lenovo-legion-r27qe-gen-2-27-05-ms-mprt-200hz-2xhdmi-displayport-hdr10-amd-freesync-premium-ips-panel-qhd-2560-x-1440-pivot-gaming-monitor-68c7gac3tk-129628080",
+      "price": 9199.0,
+      "store": "N11",
+      "image_url": "https://n11scdn.akamaized.net/a1/org/26/05/25/80/70/44/53/01/81/95/20/46/4835826328757518261.png",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 9199.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "f4a7d806-3be4-4751-bac0-065926a94e30",
+      "title": "MSI 27\" MAG 274QPF E20, Gaming Monitör, WQHD, 16:9, Flat, Rapid IPS, 200Hz, 0.5ms (Min.), FreeSync Premium, Pivot",
+      "description": "MSI 27\" MAG 274QPF E20, Gaming Monitör, WQHD, 16:9, Flat, Rapid IPS, 200Hz, 0.5ms (Min.), FreeSync Premium, Pivot 4,3 5 yıldız üzerinden 4,3 (24) Geçen ay 50 adetten fazla satın alındı 365 günün en düşük fiyatı Fiyat, ürün sayfası 9.189,00 TL 9.189 , 00 TL Önceki: 9.699,00 TL Önceki: 9.699,00 TL 9.699,00TL ÜCRETSİZ teslimat 4 Kas Çar Sepete ekle Enerji Verimlilik Sınıfı: F",
+      "url": "https://www.amazon.com.tr/MSI-274QPF-Gaming-Monit%C3%B6r-WQHD/dp/B096Y43VFZ/ref=sr_1_49?dib=eyJ2IjoiMSJ9.su2msUx8r7l0J4L9IUal_uyeB_G6nwGSx2TfhVPbp4GNlXtfBWHa0gwYDSh-x4wpppxzzCxrHqr_v_eGYga5p2m2WemQcJhEnY7FvdwStnOTW6D5l3UhCN8kAcyak58h35EDTSP2yRGJhcYo80L8pwDu8TMFblAJ7edla2hnBYKZKwSMqkNJ4onbC-v5jLzmmNMBPwOSJ4X6lPnT3_aj2Vqfy7fwLw1vsJbFbvqpPfR6tznjshxODEQBT5GqgNrMUCCcpjQCxfoeqUurF2ZUKKhzeLz3c5AOzDglfj-c-MQ.wu4TuJ6x7F4ENnYtsKhQvY6SWFBpw999wLL33hoggjI&dib_tag=se&keywords=Monit%C3%B6r&qid=1793264930&sr=8-49",
+      "price": 9699.0,
+      "store": "Amazon",
+      "image_url": "https://m.media-amazon.com/images/I/81f7bLkqK6L._AC_UL320_.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 9699.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": true,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "4280e770-905a-44ac-8b64-8900b7896725",
+      "title": "LG 27\" ULTRAGEAR 27G610A-B 1Ms 200Hz QHD IPS GAMING MONITOR",
+      "description": "4,4 27G610A-B LG 27\" ULTRAGEAR 27G610A-B 1Ms 200Hz QHD IPS GAMING MONITOR 10.198 TL",
+      "url": "https://www.vatanbilgisayar.com/lg-27-ultragear-27g610a-b-1ms-200hz-qhd-ips-gaming-monitor.html",
+      "price": 10198.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/lg/thumb/156119-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 10198.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": false,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "7a6578b4-5c59-4876-b1c2-ba781fcea312",
+      "title": "Casper Excalibur E315QVC-C 31.5'' 180Hz 1MS(MPRT) QHD CURVED Oyuncu Monitörü",
+      "description": "5,0 M.E315QVC-C Casper Excalibur E315QVC-C 31.5'' 180Hz 1MS(MPRT) QHD CURVED Oyuncu Monitörü 11.999 TL",
+      "url": "https://www.vatanbilgisayar.com/casper-excalibur-e315qvc-c-31-5-180hz-1ms-mprt-qhd-oyuncu-monitoru.html",
+      "price": 11999.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/casper/thumb/155595-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 11999.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": false,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "6f35f43c-6189-4f7c-b1ab-d9d8142c4b10",
+      "title": "Asus Rog Strix XG27WCS 27'' 180Hz 1ms WQHD Fast VA FreeSync Gaming (Oyuncu) Monitör",
+      "description": "Asus Rog Strix XG27WCS 27'' 180Hz 1ms WQHD Fast VA FreeSync Gaming (Oyuncu) Monitör 4,7 5 yıldız üzerinden 4,7 (193) Erken Kasım fırsatları Fiyat, ürün sayfası 11.699,00 TL 11.699 , 00 TL Önceki: 12.549,00 TL Önceki: 12.549,00 TL 12.549,00TL ÜCRETSİZ teslimat 6 Kas Cum veya en hızlı teslimat 2 Kas Pzt Stokta sadece 1 adet kaldı. Sepete ekle A A G Enerji Sınıfı",
+      "url": "https://www.amazon.com.tr/XG27WCS-Freesync-2560x1440-Y%C3%BCkseklik-Monit%C3%B6r/dp/B086ZS33GQ/ref=sr_1_106?dib=eyJ2IjoiMSJ9.e4FQHBpE6eneMeYXL4EtoTF6C0ZkDQgEKxoR3HzSk54wr2uzEDyDrWExxwnpFRuF-mEPiNY25zWEjbm5pXMnUK-wbdj_Xz1ms45L2GvwCDSxnaZOj6WGoA3oaMsknLM__L5HDi3Y6JSeDPdgKPUYCznPvRQ5Xv-eBqW3WXcHrR1ALNdgWIpAsBmYy5MGkaNoY3C-PK7aYCY445kpyYDTjUKG39rGSqkMBTrALmRxRlDxDIdSLabMoubOsRCKBclj357UpjlbFrPZ0jeOanYI6U6fz3YS3o5Z1uE3nplGiK0.YvcEuQ2TAaRu8CsOZbJIRrmaM7gucxsWLVkfoCjgac0&dib_tag=se&keywords=Monit%C3%B6r&qid=1793264931&sr=8-106",
+      "price": 12549.0,
+      "store": "Amazon",
+      "image_url": "https://m.media-amazon.com/images/I/81bcfRDBxHL._AC_UL320_.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 12549.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": false,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "716fc850-bac0-41e5-8435-8a103c0ea3cc",
+      "title": "Samsung Odyssey G65B 27'' VA 2K 2560x1440 240Hz 1ms HDMI DP HDR 600 Curved Gaming Monitor LS27BG652EUXUF",
+      "description": "Samsung Odyssey G65B 27'' VA 2K 2560x1440 240Hz 1ms HDMI DP HDR 600 Curved Gaming Monitor LS27BG652EUXUF 4,2 5 yıldız üzerinden 4,2 (71) 365 günün en düşük fiyatı Fiyat, ürün sayfası 12.024,00 TL 12.024 , 00 TL Önceki: 12.999,00 TL Önceki: 12.999,00 TL 12.999,00TL ÜCRETSİZ teslimat 6 Kas Cum veya en hızlı teslimat 2 Kas Pzt Stokta sadece 1 adet kaldı. Sepete ekle B A G Ürün fişi Enerji Sınıfı Ürün fişi",
+      "url": "https://www.amazon.com.tr/Samsung-Odyssey-LS27BG652EUXUF-2560x1440-Monitor/dp/B0D2P16BW6/ref=sr_1_56?dib=eyJ2IjoiMSJ9.su2msUx8r7l0J4L9IUal_uyeB_G6nwGSx2TfhVPbp4GNlXtfBWHa0gwYDSh-x4wpppxzzCxrHqr_v_eGYga5p2m2WemQcJhEnY7FvdwStnOTW6D5l3UhCN8kAcyak58h35EDTSP2yRGJhcYo80L8pwDu8TMFblAJ7edla2hnBYKZKwSMqkNJ4onbC-v5jLzmmNMBPwOSJ4X6lPnT3_aj2Vqfy7fwLw1vsJbFbvqpPfR6tznjshxODEQBT5GqgNrMUCCcpjQCxfoeqUurF2ZUKKhzeLz3c5AOzDglfj-c-MQ.wu4TuJ6x7F4ENnYtsKhQvY6SWFBpw999wLL33hoggjI&dib_tag=se&keywords=Monit%C3%B6r&qid=1793264930&sr=8-56",
+      "price": 12999.0,
+      "store": "Amazon",
+      "image_url": "https://m.media-amazon.com/images/I/51vqD4xQQjL._AC_UL320_.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 12999.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": false,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "47dd8122-cf3a-4c0f-b4b8-4002732f2c0a",
+      "title": "Samsung Odyssey G65B LS27BG652EUXUF 27\" 1 MS 240 Hz Curved VA LED Monitör",
+      "description": "ÜCRETSİZ KARGO Samsung Odyssey G65B LS27BG652EUXUF 27\" 1 MS 240 Hz Curved VA LED Monitör (35) SÜPER 14.252,67 TL SEPETTE 13.112,46 TL",
+      "url": "https://www.n11.com/urun/samsung-odyssey-g65b-ls27bg652euxuf-27-1-ms-240-hz-curved-va-led-monitor-53209253",
+      "price": 14252.67,
+      "store": "N11",
+      "image_url": "https://n11scdn.akamaized.net/a1/org/26/02/10/88/23/47/76/52/13/36/26/11/74752436612177413424.png",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 14252.67
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": false,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "e5170736-a7ec-45eb-8085-990a5bd51ab0",
+      "title": "Asus Tuf Gamıng VG34VQL3A 34\" 1MS 180Hz WQHD Kavisli Monitör",
+      "description": "Asus Tuf Gamıng VG34VQL3A 34\" 1MS 180Hz WQHD Kavisli Monitör",
+      "url": "https://www.n11.com/urun/asus-tuf-gaming-vg34vql3a-34-1ms-180hz-wqhd-kavisli-monitor-49333670",
+      "price": 16376.0,
+      "store": "N11",
+      "image_url": "https://n11scdn.akamaized.net/a1/640/15/52/02/29/IMG-2038015862295692834.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 16376.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": false,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "4b6a5e1f-33d8-485c-be91-35bc86c60c94",
+      "title": "KTC M27T6S 27\" 1Ms 200Hz 2K QHD HDR1000 QD-Mini LED IPS Gaming Monitör",
+      "description": "ÜCRETSİZ KARGO KTC M27T6S 27\" 1Ms 200Hz 2K QHD HDR1000 QD-Mini LED IPS Gaming Monitör (4) SÜPER 16.999 TL SEPETTE 15.399 TL",
+      "url": "https://www.n11.com/urun/ktc-m27t6s-27-1ms-200hz-2k-qhd-hdr1000-qd-mini-led-ips-gaming-monitor-135955352",
+      "price": 16999.0,
+      "store": "N11",
+      "image_url": "https://n11scdn.akamaized.net/a1/org/26/05/25/80/70/44/53/01/81/95/20/46/4835826328757518261.png",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 16999.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": false,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    },
+    {
+      "id": "e5824c2f-f934-4899-8ed5-c43e61bd5fae",
+      "title": "MSI 26,5'' MAG 273QP QD-OLED X24 0.03Ms(GTG) 240Hz WQHD QD-OLED GAMING MONİTÖR",
+      "description": "4,7 MAG 273QP QD-OLED X24 MSI 26,5'' MAG 273QP QD-OLED X24 0.03Ms(GTG) 240Hz WQHD QD-OLED GAMING MONİTÖR 24.849 TL",
+      "url": "https://www.vatanbilgisayar.com/msi-26-5-mag-273qp-qd-oled-x24-0-03ms-gtg-240hz-wqhd-qd-oled-gaming-monitor.html",
+      "price": 24849.0,
+      "store": "Vatan Bilgisayar",
+      "image_url": "https://cdn.vatanbilgisayar.com/Upload/PRODUCT/msi/thumb/156098-1_small.jpg",
+      "radar_id": "75ee4b61-7e8e-4d2d-8f06-3f177e0853c2",
+      "query": "Monitör",
+      "stores": [
+        "Gaming.gen.tr",
+        "İtopya",
+        "İncehesap",
+        "Sinerji",
+        "Tebilon",
+        "Vatan Bilgisayar",
+        "Amazon",
+        "Hepsiburada",
+        "Trendyol",
+        "N11"
+      ],
+      "min_price": 0.0,
+      "max_price": 10000.0,
+      "category": "Bilgisayar & Donanım",
+      "subcategory": "Monitör",
+      "feature": "180Hz · 240Hz · 200Hz · 280Hz · 360Hz",
+      "monitor_filters": {
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "selected_filters": {
+        "features": [],
+        "refresh_rate": [
+          "180Hz",
+          "240Hz",
+          "200Hz",
+          "280Hz",
+          "360Hz"
+        ],
+        "resolution": [],
+        "panel_type": []
+      },
+      "filter_fallback": false,
+      "price_history": [
+        {
+          "timestamp": "2026-10-29T12:08:44.097+03:00",
+          "price": 24849.0
+        }
+      ],
+      "shock_alert": null,
+      "is_discounted": false,
+      "active": false,
+      "last_seen": "2026-10-29T12:08:44.097+03:00"
+    }
+  ]
+}

@@ -118,6 +118,11 @@ def initialize(legacy_files):
                     );
                     CREATE INDEX IF NOT EXISTS price_history_lookup
                         ON price_history(collection, entry_id, observed_at);
+                    CREATE TABLE IF NOT EXISTS catalog_categories (
+                        position INTEGER NOT NULL,
+                        name TEXT PRIMARY KEY,
+                        subcategories TEXT NOT NULL
+                    );
                     """
                 )
                 migrated = connection.execute(
@@ -176,6 +181,94 @@ def initialize(legacy_files):
             _INITIALIZED = True
         except sqlite3.Error as error:
             raise RuntimeError(f"SQLite veritabanı hazırlanamadı: {error}") from error
+
+
+def seed_catalog(seed_file, categories):
+    with _DATABASE_LOCK:
+        try:
+            with _connect() as connection:
+                for position, (name, subcategories) in enumerate(categories.items()):
+                    connection.execute(
+                        """
+                        INSERT INTO catalog_categories
+                            (position, name, subcategories)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT(name) DO UPDATE SET
+                            position = excluded.position,
+                            subcategories = excluded.subcategories
+                        """,
+                        (
+                            position,
+                            name,
+                            json.dumps(subcategories, ensure_ascii=False),
+                        ),
+                    )
+                names = {name for name in categories}
+                existing = connection.execute(
+                    "SELECT name FROM catalog_categories"
+                ).fetchall()
+                connection.executemany(
+                    "DELETE FROM catalog_categories WHERE name = ?",
+                    [(row["name"],) for row in existing if row["name"] not in names],
+                )
+                seeded = connection.execute(
+                    "SELECT value FROM metadata WHERE key = 'local_catalog_seeded'"
+                ).fetchone()
+                has_products = connection.execute(
+                    "SELECT 1 FROM catalog_items WHERE collection = 'offers' LIMIT 1"
+                ).fetchone()
+                if seeded is not None:
+                    return
+                if has_products is not None:
+                    connection.execute(
+                        """
+                        INSERT INTO metadata (key, value)
+                        VALUES ('local_catalog_seeded', 'existing-data')
+                        """
+                    )
+                    return
+            if not seed_file.exists():
+                return
+            try:
+                catalog = json.loads(seed_file.read_text(encoding="utf-8-sig"))
+            except (OSError, json.JSONDecodeError) as error:
+                raise RuntimeError(
+                    f"{seed_file.name} ürün kataloğu okunamadı: {error}"
+                ) from error
+            products = catalog.get("products") if isinstance(catalog, dict) else None
+            if not isinstance(products, list):
+                raise RuntimeError(
+                    f"{seed_file.name} products listesi içermelidir."
+                )
+            save_records("offers", products)
+            with _connect() as connection:
+                connection.execute(
+                    """
+                    INSERT OR IGNORE INTO metadata (key, value)
+                    VALUES ('local_catalog_seeded', 'seed-file')
+                    """
+                )
+        except sqlite3.Error as error:
+            raise RuntimeError(f"Ürün kataloğu hazırlanamadı: {error}") from error
+
+
+def load_categories():
+    with _DATABASE_LOCK:
+        try:
+            with _connect() as connection:
+                rows = connection.execute(
+                    """
+                    SELECT name, subcategories
+                    FROM catalog_categories
+                    ORDER BY position
+                    """
+                ).fetchall()
+                return {
+                    row["name"]: json.loads(row["subcategories"])
+                    for row in rows
+                }
+        except (sqlite3.Error, json.JSONDecodeError) as error:
+            raise RuntimeError(f"Kategoriler veritabanından okunamadı: {error}") from error
 
 
 def load_records(collection):
