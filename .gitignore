@@ -10,3 +10,5 @@ offers.json
 *.sqlite3-shm
 *.sqlite3-wal
 akakce_catalog.db
+.trendyol_scrape_progress.json
+*.bak

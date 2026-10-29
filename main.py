@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import sqlite3
 from contextlib import asynccontextmanager, contextmanager
@@ -19,30 +20,10 @@ INDEX_FILE = ROOT / "index.html"
 LOGGER = logging.getLogger(__name__)
 
 CATEGORY_ICONS = {
-    "beauty": "🧴",
-    "fragrances": "🌸",
-    "furniture": "🛋️",
-    "groceries": "🛒",
-    "home-decoration": "🏠",
-    "kitchen-accessories": "🍳",
-    "laptops": "💻",
-    "mens-shirts": "👔",
-    "mens-shoes": "👞",
-    "mens-watches": "⌚",
-    "mobile-accessories": "📱",
-    "motorcycle": "🏍️",
-    "skin-care": "🧴",
-    "smartphones": "📱",
-    "sports-accessories": "⚽",
-    "sunglasses": "🕶️",
-    "tablets": "📲",
-    "tops": "👕",
-    "vehicle": "🚗",
-    "womens-bags": "👜",
-    "womens-dresses": "👗",
-    "womens-jewellery": "💍",
-    "womens-shoes": "👠",
-    "womens-watches": "⌚",
+    "monitor": "🖥️",
+    "oyuncu-monitoru": "🎮",
+    "4k-monitor": "🖥️",
+    "oyuncu-masaustu-bilgisayari": "🖥️",
 }
 
 
@@ -70,6 +51,20 @@ def _ensure_column(
 
 
 def initialize_schema(db: sqlite3.Connection) -> None:
+    if db.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'store_prices'"
+    ).fetchone():
+        for index in db.execute("PRAGMA index_list(store_prices)").fetchall():
+            if not index["unique"]:
+                continue
+            columns = [
+                row["name"]
+                for row in db.execute(f"PRAGMA index_info({index['name']})")
+            ]
+            if columns == ["product_id", "store_name"]:
+                db.execute("DROP TABLE store_prices")
+                break
+
     db.executescript(
         """
             CREATE TABLE IF NOT EXISTS categories (
@@ -87,9 +82,11 @@ def initialize_schema(db: sqlite3.Connection) -> None:
                 lowest_store_name TEXT NOT NULL,
                 image_url TEXT NOT NULL,
                 description TEXT NOT NULL,
-                price_currency TEXT NOT NULL DEFAULT 'USD',
+                price_currency TEXT NOT NULL DEFAULT 'TRY',
                 source_url TEXT NOT NULL DEFAULT '',
-                rating REAL NOT NULL DEFAULT 0
+                rating REAL NOT NULL DEFAULT 0,
+                tags_json TEXT NOT NULL DEFAULT '[]',
+                image_gallery_json TEXT NOT NULL DEFAULT '[]'
             );
             CREATE TABLE IF NOT EXISTS store_prices (
                 id INTEGER PRIMARY KEY,
@@ -97,9 +94,9 @@ def initialize_schema(db: sqlite3.Connection) -> None:
                 store_name TEXT NOT NULL,
                 price REAL NOT NULL,
                 product_url TEXT NOT NULL,
-                is_estimate INTEGER NOT NULL DEFAULT 1,
-                source_note TEXT NOT NULL DEFAULT 'Demo estimate',
-                UNIQUE(product_id, store_name)
+                is_estimate INTEGER NOT NULL DEFAULT 0,
+                source_note TEXT NOT NULL DEFAULT 'Trendyol product page',
+                UNIQUE(product_id, store_name, product_url)
             );
             CREATE TABLE IF NOT EXISTS price_history (
                 id INTEGER PRIMARY KEY,
@@ -120,12 +117,19 @@ def initialize_schema(db: sqlite3.Connection) -> None:
                 ON price_history(product_id, recorded_on);
         """
     )
-    _ensure_column(db, "products", "price_currency", "TEXT NOT NULL DEFAULT 'USD'")
+    _ensure_column(db, "products", "price_currency", "TEXT NOT NULL DEFAULT 'TRY'")
     _ensure_column(db, "products", "source_url", "TEXT NOT NULL DEFAULT ''")
     _ensure_column(db, "products", "rating", "REAL NOT NULL DEFAULT 0")
-    _ensure_column(db, "store_prices", "is_estimate", "INTEGER NOT NULL DEFAULT 1")
+    _ensure_column(db, "products", "tags_json", "TEXT NOT NULL DEFAULT '[]'")
     _ensure_column(
-        db, "store_prices", "source_note", "TEXT NOT NULL DEFAULT 'Demo estimate'"
+        db, "products", "image_gallery_json", "TEXT NOT NULL DEFAULT '[]'"
+    )
+    _ensure_column(db, "store_prices", "is_estimate", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(
+        db,
+        "store_prices",
+        "source_note",
+        "TEXT NOT NULL DEFAULT 'Trendyol product page'",
     )
 
 
@@ -133,7 +137,7 @@ def initialize_database() -> None:
     with connect() as db:
         initialize_schema(db)
         seeded_count = seed_catalog(db, CATEGORY_ICONS)
-        LOGGER.info("SQLite catalog initialized with %s public API products", seeded_count)
+        LOGGER.info("SQLite catalog initialized with %s Trendyol products", seeded_count)
 
 
 @asynccontextmanager
@@ -145,8 +149,13 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="İndirim Radarı", version="1.1.0", lifespan=lifespan)
 
 
-def product_card(row: sqlite3.Row) -> dict:
-    return dict(row)
+def product_card(row: sqlite3.Row, include_gallery: bool = False) -> dict:
+    product = dict(row)
+    product["tags"] = json.loads(product.pop("tags_json", "[]"))
+    gallery = product.pop("image_gallery_json", "[]")
+    if include_gallery:
+        product["image_gallery"] = json.loads(gallery)
+    return product
 
 
 def _category_rows(db: sqlite3.Connection) -> list[dict]:
@@ -204,7 +213,7 @@ def get_home() -> dict:
             "popular": [product_card(row) for row in popular],
             "deals": [product_card(row) for row in deals],
             "categories": _category_rows(db),
-            "catalog_source": metadata.get("source", "DummyJSON"),
+            "catalog_source": metadata.get("source", "Trendyol"),
             "catalog_note": metadata.get("note", ""),
         }
 
@@ -278,7 +287,7 @@ def get_product(product_id: int) -> dict:
         ).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="Ürün bulunamadı")
-        product = product_card(row)
+        product = product_card(row, include_gallery=True)
         offers = db.execute(
             """SELECT store_name, price, product_url, is_estimate, source_note
                FROM store_prices WHERE product_id = ? ORDER BY price ASC, store_name ASC""",
@@ -315,7 +324,7 @@ def get_price_history(product_id: int, period: str = "1y") -> dict:
         "lowest": min(prices),
         "current": prices[-1],
         "currency": product["price_currency"],
-        "is_estimate": True,
+        "is_estimate": False,
     }
 
 
