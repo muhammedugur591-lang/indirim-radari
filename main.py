@@ -120,15 +120,64 @@ PRODUCT_DATA = [
     ("bilgisayar", "MSI MAG Infinite S3 i5-14400F RTX 4060", "MSI", 42999, "Core i5-14400F, RTX 4060, 16 GB DDR5, 1 TB NVMe SSD"),
     ("bilgisayar", "HP Omen 25L Ryzen 7 8700G RTX 4060 Ti", "HP", 58999, "Ryzen 7 8700G, RTX 4060 Ti, 32 GB DDR5, 1 TB SSD"),
     ("bilgisayar", "Lenovo Legion Tower 5 i7-14700F RTX 4070", "Lenovo", 74999, "Core i7-14700F, RTX 4070, 32 GB DDR5, 1 TB SSD"),
+    ("monitor", "LG UltraGear 32GS95UE 32 inç 4K OLED 240Hz", "LG", 52999, "32 inç OLED, 4K 240 Hz veya Full HD 480 Hz, 0.03 ms"),
+    ("monitor", "Gigabyte M27Q X 27 inç QHD 240Hz", "Gigabyte", 18999, "27 inç SuperSpeed IPS, QHD, 240 Hz, KVM"),
+    ("ekran-karti", "MSI GeForce RTX 4060 Ti Ventus 2X Black 8GB", "MSI", 19999, "8 GB GDDR6, Ada Lovelace, DLSS 3, çift fan"),
+    ("ekran-karti", "Sapphire Pulse Radeon RX 7900 GRE 16GB", "AMD", 28999, "16 GB GDDR6, RDNA 3, 1440p ve 4K oyun"),
+    ("ekran-karti", "ASUS Dual GeForce RTX 4070 EVO OC 12GB", "ASUS", 27999, "12 GB GDDR6X, DLSS 3, ışın izleme, çift fan"),
+    ("laptop", "Apple MacBook Pro 14 M3 Pro 18GB 512GB", "Apple", 79999, "M3 Pro, 14.2 inç Liquid Retina XDR, 18 GB birleşik bellek"),
+    ("laptop", "ASUS Zenbook 14 OLED UX3405 Core Ultra 7", "ASUS", 44999, "Core Ultra 7, 14 inç 3K OLED, 32 GB RAM, 1 TB SSD"),
+    ("laptop", "Lenovo Yoga Slim 7 14IMH9 Core Ultra 5", "Lenovo", 37999, "Core Ultra 5, 14 inç OLED, 16 GB RAM, 1 TB SSD"),
+    ("laptop", "HP Pavilion Plus 14 Ryzen 7 7840U", "HP", 32999, "Ryzen 7 7840U, 14 inç 2.8K OLED, 16 GB RAM"),
+    ("cep-telefonu", "Apple iPhone 15 Pro 256GB", "Apple", 59999, "6.1 inç Super Retina XDR, A17 Pro, titanyum kasa"),
+    ("cep-telefonu", "Samsung Galaxy S24 256GB", "Samsung", 35999, "6.2 inç Dynamic AMOLED 2X, Exynos 2400, 50 MP kamera"),
+    ("cep-telefonu", "Xiaomi 14T Pro 512GB", "Xiaomi", 32999, "6.67 inç AMOLED 144 Hz, Dimensity 9300+, Leica kamera"),
+    ("cep-telefonu", "Google Pixel 9 Pro 256GB", "Google", 54999, "6.3 inç LTPO OLED, Tensor G4, 50 MP üçlü kamera"),
+    ("islemci", "AMD Ryzen 5 9600X 3.9GHz AM5", "AMD", 10999, "6 çekirdek, 12 izlek, Zen 5, 5.4 GHz boost"),
+    ("islemci", "AMD Ryzen 7 9700X 3.8GHz AM5", "AMD", 15999, "8 çekirdek, 16 izlek, Zen 5, 65 W TDP"),
+    ("islemci", "Intel Core i5-14400F 2.5GHz LGA1700", "Intel", 7499, "10 çekirdek, 16 izlek, 4.7 GHz turbo, soğutucu dahil"),
+    ("islemci", "Intel Core i9-14900K 3.2GHz LGA1700", "Intel", 24999, "24 çekirdek, 32 izlek, 6.0 GHz turbo, UHD 770"),
+    ("ram", "Corsair Vengeance 64GB (2x32) DDR5 6000MHz", "Corsair", 7999, "64 GB kit, DDR5-6000, AMD EXPO ve Intel XMP"),
+    ("ssd-sabit-disk", "WD Black SN850X 2TB NVMe M.2 SSD", "Western Digital", 6999, "PCIe 4.0, 7300 MB/sn okuma, oyun modu"),
+    ("anakart", "ASUS ROG Strix B650E-F Gaming WiFi AM5", "ASUS", 13999, "AMD B650E, DDR5, Wi-Fi 6E, PCIe 5.0"),
+    ("oyuncu-kulakligi", "Logitech G733 Lightspeed RGB Kablosuz", "Logitech", 4999, "Lightspeed kablosuz, Blue VO!CE mikrofon, 29 saat pil"),
+    ("klavye", "Logitech G915 X Lightspeed TKL", "Logitech", 8999, "Düşük profilli kablosuz mekanik, Lightspeed, RGB"),
+    ("mouse", "Logitech MX Master 3S Kablosuz Mouse", "Logitech", 3999, "8K DPI sensör, sessiz tıklama, USB-C hızlı şarj"),
+    ("akilli-saat", "Apple Watch SE 2 GPS 44mm", "Apple", 10999, "Retina OLED, kalp ritmi bildirimi, 50 m suya dayanıklılık"),
+    ("tablet", "Apple iPad 10. Nesil Wi-Fi 256GB", "Apple", 21999, "10.9 inç Liquid Retina, A14 Bionic, USB-C"),
+    ("tablet", "Samsung Galaxy Tab S9 Ultra Wi-Fi 256GB", "Samsung", 44999, "14.6 inç Dynamic AMOLED 2X, Snapdragon 8 Gen 2, S Pen"),
+    ("kulaklik", "Sony WF-1000XM5 Kablosuz Kulak İçi", "Sony", 8999, "Aktif gürültü engelleme, LDAC, 24 saate kadar pil"),
+    ("televizyon", "LG OLED65C4 65 inç OLED evo 4K", "LG", 89999, "65 inç OLED evo, 4K 144 Hz, α9 Gen7, Dolby Vision"),
+    ("oyun-konsolu", "Sony PlayStation 5 Pro 2TB", "Sony", 39999, "2 TB SSD, gelişmiş ışın izleme, 4K oyun, Wi-Fi 7"),
 ]
 
 STORES = [
     ("Amazon Türkiye", "https://www.amazon.com.tr/s?k={query}"),
     ("Hepsiburada", "https://www.hepsiburada.com/ara?q={query}"),
     ("Trendyol", "https://www.trendyol.com/sr?q={query}"),
-    ("n11", "https://www.n11.com/arama?q={query}"),
+    ("İncehesap", "https://www.incehesap.com/arama/?q={query}"),
 ]
 
+IMAGE_URLS = {
+    "monitor": "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=85",
+    "ekran-karti": "https://images.unsplash.com/photo-1593305841991-05c297ba4575?auto=format&fit=crop&w=800&q=85",
+    "laptop": "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?auto=format&fit=crop&w=800&q=85",
+    "cep-telefonu": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=85",
+    "islemci": "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?auto=format&fit=crop&w=800&q=85",
+    "ram": "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?auto=format&fit=crop&w=800&q=85",
+    "ssd-sabit-disk": "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=85",
+    "anakart": "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?auto=format&fit=crop&w=800&q=85",
+    "oyuncu-kulakligi": "https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=800&q=85",
+    "klavye": "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=800&q=85",
+    "mouse": "https://images.unsplash.com/photo-1527814050087-3793815479db?auto=format&fit=crop&w=800&q=85",
+    "akilli-saat": "https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=800&q=85",
+    "tablet": "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?auto=format&fit=crop&w=800&q=85",
+    "televizyon": "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&w=800&q=85",
+    "oyun-konsolu": "https://images.unsplash.com/photo-1593305841991-05c297ba4575?auto=format&fit=crop&w=800&q=85",
+    "kulaklik": "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=800&q=85",
+    "depolama": "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=85",
+    "bilgisayar": "https://images.unsplash.com/photo-1593305841991-05c297ba4575?auto=format&fit=crop&w=800&q=85",
+}
 
 @contextmanager
 def connect() -> Iterator[sqlite3.Connection]:
@@ -192,9 +241,11 @@ def initialize_database() -> None:
             "INSERT OR IGNORE INTO categories (id, name, icon) VALUES (?, ?, ?)",
             CATEGORY_DATA,
         )
-        if db.execute("SELECT COUNT(*) FROM products").fetchone()[0]:
-            return
-
+        store_names = tuple(store_name for store_name, _ in STORES)
+        db.execute(
+            f"DELETE FROM store_prices WHERE store_name NOT IN ({','.join('?' for _ in store_names)})",
+            store_names,
+        )
         today = date.today()
         for product_id, (category, title, brand, base_price, description) in enumerate(
             PRODUCT_DATA, start=1
@@ -202,15 +253,21 @@ def initialize_database() -> None:
             low_store_index = product_id % len(STORES)
             low_price = round(base_price * (0.94 + (product_id % 8) * 0.008), 2)
             old_price = round(low_price * (1.08 + (product_id % 5) * 0.012), 2)
-            image_url = (
-                "https://placehold.co/640x480/171a21/f2f2f2"
-                f"?text={quote_plus(title[:36])}"
-            )
+            image_url = IMAGE_URLS[category]
             db.execute(
                 """INSERT INTO products
                    (id, title, category, brand, current_lowest_price, old_price,
                     lowest_store_name, image_url, description)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(id) DO UPDATE SET
+                     title = excluded.title,
+                     category = excluded.category,
+                     brand = excluded.brand,
+                     current_lowest_price = excluded.current_lowest_price,
+                     old_price = excluded.old_price,
+                     lowest_store_name = excluded.lowest_store_name,
+                     image_url = excluded.image_url,
+                     description = excluded.description""",
                 (
                     product_id,
                     title,
@@ -238,7 +295,10 @@ def initialize_database() -> None:
                 )
             db.executemany(
                 """INSERT INTO store_prices
-                   (product_id, store_name, price, product_url) VALUES (?, ?, ?, ?)""",
+                   (product_id, store_name, price, product_url) VALUES (?, ?, ?, ?)
+                   ON CONFLICT(product_id, store_name) DO UPDATE SET
+                     price = excluded.price,
+                     product_url = excluded.product_url""",
                 offer_rows,
             )
 
@@ -250,7 +310,7 @@ def initialize_database() -> None:
                 price = round(low_price * (1 + markup), 2)
                 history_rows.append((product_id, recorded_on.isoformat(), price))
             db.executemany(
-                """INSERT INTO price_history (product_id, recorded_on, price)
+                """INSERT OR IGNORE INTO price_history (product_id, recorded_on, price)
                    VALUES (?, ?, ?)""",
                 history_rows,
             )
@@ -301,13 +361,17 @@ def get_home() -> dict:
     with connect() as db:
         popular = db.execute(
             """SELECT p.*, c.name AS category_name,
-                      (SELECT COUNT(*) FROM store_prices s WHERE s.product_id = p.id) AS offer_count
+                      (SELECT COUNT(*) FROM store_prices s WHERE s.product_id = p.id) AS offer_count,
+                      (SELECT s.product_url FROM store_prices s
+                       WHERE s.product_id = p.id ORDER BY s.price ASC LIMIT 1) AS lowest_store_url
                FROM products p JOIN categories c ON c.id = p.category
                ORDER BY p.current_lowest_price ASC, p.id ASC LIMIT 12"""
         ).fetchall()
         deals = db.execute(
             """SELECT p.*, c.name AS category_name,
-                      (SELECT COUNT(*) FROM store_prices s WHERE s.product_id = p.id) AS offer_count
+                      (SELECT COUNT(*) FROM store_prices s WHERE s.product_id = p.id) AS offer_count,
+                      (SELECT s.product_url FROM store_prices s
+                       WHERE s.product_id = p.id ORDER BY s.price ASC LIMIT 1) AS lowest_store_url
                FROM products p JOIN categories c ON c.id = p.category
                ORDER BY (p.old_price - p.current_lowest_price) / p.old_price DESC, p.id ASC
                LIMIT 8"""
@@ -333,7 +397,7 @@ def get_products(
     min_price: Annotated[float | None, Query(ge=0)] = None,
     max_price: Annotated[float | None, Query(ge=0)] = None,
     sort: str = "relevance",
-    limit: Annotated[int, Query(ge=1, le=100)] = 100,
+    limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ) -> dict:
     clauses: list[str] = []
     values: list[object] = []
@@ -368,7 +432,9 @@ def get_products(
     with connect() as db:
         rows = db.execute(
             f"""SELECT p.*, c.name AS category_name,
-                       (SELECT COUNT(*) FROM store_prices s WHERE s.product_id = p.id) AS offer_count
+                       (SELECT COUNT(*) FROM store_prices s WHERE s.product_id = p.id) AS offer_count,
+                       (SELECT s.product_url FROM store_prices s
+                        WHERE s.product_id = p.id ORDER BY s.price ASC LIMIT 1) AS lowest_store_url
                 FROM products p JOIN categories c ON c.id = p.category
                 {where} ORDER BY {order_by} LIMIT ?""",
             (*values, limit),
@@ -385,7 +451,9 @@ def get_product(product_id: int) -> dict:
     with connect() as db:
         row = db.execute(
             """SELECT p.*, c.name AS category_name,
-                      (SELECT COUNT(*) FROM store_prices s WHERE s.product_id = p.id) AS offer_count
+                      (SELECT COUNT(*) FROM store_prices s WHERE s.product_id = p.id) AS offer_count,
+                      (SELECT s.product_url FROM store_prices s
+                       WHERE s.product_id = p.id ORDER BY s.price ASC LIMIT 1) AS lowest_store_url
                FROM products p JOIN categories c ON c.id = p.category WHERE p.id = ?""",
             (product_id,),
         ).fetchone()

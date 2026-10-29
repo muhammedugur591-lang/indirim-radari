@@ -5,7 +5,7 @@ const numberFormat = new Intl.NumberFormat("tr-TR", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
-const stores = ["Amazon Türkiye", "Hepsiburada", "Trendyol", "n11"];
+const stores = ["Amazon Türkiye", "Hepsiburada", "Trendyol", "İncehesap"];
 let activeChart;
 let refreshTimer;
 
@@ -31,14 +31,14 @@ function productCard(product) {
   const discount = Math.max(0, Math.round((1 - product.current_lowest_price / product.old_price) * 100));
   return `<article class="product-card">
     <a class="product-image" href="/urun/${product.id}" data-link>
-      <img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.title)}" loading="lazy">
+      <img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.title)}" data-title="${escapeHtml(product.title)}" loading="lazy">
       ${discount > 0 ? `<span class="discount-badge">%${discount} indirim</span>` : ""}
     </a>
     <div class="product-info">
       <span class="product-brand">${escapeHtml(product.brand)} · ${escapeHtml(product.category_name || "")}</span>
       <a class="product-title" href="/urun/${product.id}" data-link>${escapeHtml(product.title)}</a>
       <div class="product-price-row"><strong>${price(product.current_lowest_price)}</strong><del>${price(product.old_price)}</del></div>
-      <div class="product-card-bottom"><span>${escapeHtml(product.lowest_store_name)}'da</span><a href="/urun/${product.id}" data-link>Fiyatları gör <span aria-hidden="true">→</span></a></div>
+      <div class="product-card-bottom"><span>${escapeHtml(product.lowest_store_name)}'da</span><a href="${escapeHtml(product.lowest_store_url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(product.lowest_store_name)} mağazasında ürünü ara">Mağazada ara ↗</a></div>
     </div>
   </article>`;
 }
@@ -99,7 +99,7 @@ function readFiltersFromUrl() {
 async function renderListing() {
   const filters = readFiltersFromUrl();
   if (filters.q) searchInput.value = filters.q;
-  const params = new URLSearchParams({ limit: "100", sort: filters.sort });
+  const params = new URLSearchParams({ limit: "200", sort: filters.sort });
   if (filters.q) params.set("q", filters.q);
   if (filters.category) params.set("category", filters.category);
   if (filters.min) params.set("min_price", filters.min);
@@ -182,7 +182,7 @@ async function renderProduct(productId) {
   const initialHistory = await api(`/api/products/${encodeURIComponent(productId)}/history?period=6m`);
   app.innerHTML = `  <div class="breadcrumbs"><a href="/" data-link>Ana sayfa</a><span>/</span><a href="/kategori/${encodeURIComponent(product.category)}" data-link>${escapeHtml(product.category_name)}</a><span>/</span><span>Ürün detayı</span></div>
     <section class="product-detail">
-      <div class="detail-image-wrap"><img class="detail-image" src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.title)}"></div>
+      <div class="detail-image-wrap"><img class="detail-image" src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.title)}" data-title="${escapeHtml(product.title)}"></div>
       <div class="detail-copy"><span class="eyebrow">${escapeHtml(product.brand)} · Ürün fiyat karşılaştırması</span><h1>${escapeHtml(product.title)}</h1><p class="detail-description">${escapeHtml(product.description)}</p>
         <div class="detail-best-price"><span>En düşük fiyat</span><strong>${price(product.current_lowest_price)}</strong><small>${escapeHtml(product.lowest_store_name)} mağazasında</small></div>
         <a class="button button-primary" href="#offers">Satıcı fiyatlarını karşılaştır <span>↓</span></a>
@@ -198,8 +198,8 @@ async function renderProduct(productId) {
       </div>
     </section>
     <section id="offers" class="offers-section"><div class="section-heading"><div><span class="eyebrow">Mağaza teklifleri</span><h2>Satıcı fiyatları</h2></div><span class="section-note">${product.offers.length} mağaza listeleniyor</span></div>
-      <div class="offers-list">${product.offers.map((offer, index) => `<article class="offer-row"><span class="offer-rank">${index + 1}</span><div class="store-logo">${escapeHtml(offer.store_name)}</div><span class="offer-stock">${index === 0 ? "En iyi fiyat" : "Stokta olabilir"}</span><strong class="offer-price">${price(offer.price)}</strong><a class="button ${index === 0 ? "button-primary" : "button-muted"}" href="${escapeHtml(offer.product_url)}" target="_blank" rel="noopener noreferrer">Satıcıya git ↗</a></article>`).join("")}</div>
-      <p class="demo-disclaimer">Satıcı bağlantıları mağaza arama sayfalarına gider; fiyat ve stok bilgileri örnek katalog verisidir.</p>
+      <div class="offers-list">${product.offers.map((offer, index) => `<article class="offer-row"><span class="offer-rank">${index + 1}</span><div class="offer-store"><div class="store-logo">${escapeHtml(offer.store_name)}</div><a class="offer-url" href="${escapeHtml(offer.product_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(offer.product_url)}</a></div><strong class="offer-price">${price(offer.price)}</strong><a class="button button-store" href="${escapeHtml(offer.product_url)}" target="_blank" rel="noopener noreferrer">Satıcıya git ↗</a></article>`).join("")}</div>
+      <p class="demo-disclaimer">Satıcı URL’leri arama sonuçlarına gider; birebir ürün sayfası bağlantıları ve fiyatlar doğrulanmış mağaza verisi değildir.</p>
     </section>`;
   drawPriceChart(initialHistory.points);
   document.querySelectorAll("[data-period]").forEach((button) => button.addEventListener("click", async () => {
@@ -255,6 +255,15 @@ function drawPriceChart(points) {
     },
   });
 }
+
+document.addEventListener("error", (event) => {
+  const image = event.target;
+  if (!(image instanceof HTMLImageElement) || !image.dataset.title || image.dataset.fallbackApplied) return;
+  image.dataset.fallbackApplied = "true";
+  const title = escapeHtml(image.dataset.title.slice(0, 40));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480"><rect width="800" height="480" fill="#20232b"/><circle cx="400" cy="205" r="92" fill="#292c35"/><path d="M354 205h92m-46-46v92" stroke="#ef6468" stroke-width="12" stroke-linecap="round"/><text x="400" y="365" fill="#d8dae0" font-family="Arial,sans-serif" font-size="24" text-anchor="middle">${title}</text></svg>`;
+  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}, true);
 
 async function renderRoute() {
   const path = location.pathname;
