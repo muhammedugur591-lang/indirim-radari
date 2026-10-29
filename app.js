@@ -93,6 +93,10 @@ function readFiltersFromUrl() {
     category: location.pathname.startsWith("/kategori/") ? decodeURIComponent(location.pathname.slice("/kategori/".length)) : "",
     min: params.get("min_price") || "",
     max: params.get("max_price") || "",
+    refreshRate: params.get("refresh_rate") || "",
+    minRefreshRate: params.get("min_refresh_rate") || "",
+    screenSize: params.get("screen_size") || "",
+    minScreenSize: params.get("min_screen_size") || "",
     brand: params.get("brand") || "",
     store: params.get("store") || "",
     sort: params.get("sort") || "relevance",
@@ -107,13 +111,20 @@ async function renderListing() {
   if (filters.category) params.set("category", filters.category);
   if (filters.min) params.set("min_price", filters.min);
   if (filters.max) params.set("max_price", filters.max);
+  if (filters.refreshRate) params.set("refresh_rate", filters.refreshRate);
+  if (filters.minRefreshRate) params.set("min_refresh_rate", filters.minRefreshRate);
+  if (filters.screenSize) params.set("screen_size", filters.screenSize);
+  if (filters.minScreenSize) params.set("min_screen_size", filters.minScreenSize);
   if (filters.brand) params.set("brand", filters.brand);
   if (filters.store) params.set("store", filters.store);
 
-  const [result, categories, brands] = await Promise.all([
+  const [result, categories, brands, facets] = await Promise.all([
     api(`/api/products?${params}`),
     api("/api/categories"),
     api(`/api/brands${filters.category ? `?category=${encodeURIComponent(filters.category)}` : ""}`),
+    filters.category === "monitor"
+      ? api("/api/filters?category=monitor")
+      : Promise.resolve({ refresh_rates: [], screen_sizes: [] }),
   ]);
   const category = categories.find((item) => item.id === filters.category);
   const title = filters.q ? `“${filters.q}” arama sonuçları` : category?.name || "Tüm ürünler";
@@ -128,6 +139,17 @@ async function renderListing() {
         <input id="budget-range" class="budget-range" type="range" min="0" max="300000" step="1000" value="${escapeHtml(currentMax)}" aria-label="Maksimum fiyat">
         <div class="range-caption"><span>${price(0)}</span><span id="range-label">${price(Number(currentMax))}</span></div>
       </fieldset>
+      ${filters.category === "monitor" ? `<fieldset><legend>Yenileme hızı</legend><select id="refresh-rate-select" class="filter-select"><option value="">Tüm hızlar</option>${facets.refresh_rates.map((rate) => {
+        const value = rate === 360 ? "360+" : String(rate);
+        const label = rate === 360 ? "360Hz+" : `${rate}Hz`;
+        return `<option value="${value}" ${filters.refreshRate === String(rate) || (rate === 360 && filters.minRefreshRate === "360") ? "selected" : ""}>${label}</option>`;
+      }).join("")}</select></fieldset>
+      <fieldset><legend>Ekran boyutu</legend><select id="screen-size-select" class="filter-select"><option value="">Tüm boyutlar</option>${facets.screen_sizes.map((size) => {
+        const isMinSize = size === "34+";
+        const value = isMinSize ? "34+" : String(size);
+        const label = isMinSize ? "34″+" : `${Number(size).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}″`;
+        return `<option value="${value}" ${filters.screenSize === value || (isMinSize && filters.minScreenSize === "34") ? "selected" : ""}>${label}</option>`;
+      }).join("")}</select></fieldset>` : ""}
       <fieldset><legend>Mağaza</legend><div class="check-list">${stores.map((store) => `<label class="check-option"><input type="radio" name="store-filter" value="${escapeHtml(store)}" ${filters.store === store ? "checked" : ""}><span>${escapeHtml(store)}</span></label>`).join("")}<label class="check-option"><input type="radio" name="store-filter" value="" ${!filters.store ? "checked" : ""}><span>Tüm mağazalar</span></label></div></fieldset>
       <fieldset><legend>Marka</legend><select id="brand-select" class="filter-select"><option value="">Tüm markalar</option>${brands.map((brand) => `<option value="${escapeHtml(brand)}" ${filters.brand === brand ? "selected" : ""}>${escapeHtml(brand)}</option>`).join("")}</select></fieldset>
       <div class="demo-filter-note">Fiyatlar Trendyol ürün sayfalarından alınmıştır; zamanla değişebilir.</div>
@@ -151,6 +173,12 @@ function bindListingFilters() {
       if (filters.q) params.set("q", filters.q);
       if (min) params.set("min_price", min);
       if (max && max !== "300000") params.set("max_price", max);
+      const refreshRate = document.querySelector("#refresh-rate-select")?.value || "";
+      const screenSize = document.querySelector("#screen-size-select")?.value || "";
+      if (refreshRate === "360+") params.set("min_refresh_rate", "360");
+      else if (refreshRate) params.set("refresh_rate", refreshRate);
+      if (screenSize === "34+") params.set("min_screen_size", "34");
+      else if (screenSize) params.set("screen_size", screenSize);
       if (brand) params.set("brand", brand);
       if (store) params.set("store", store);
       if (sort !== "relevance") params.set("sort", sort);
@@ -164,6 +192,8 @@ function bindListingFilters() {
   document.querySelector("#max-price").addEventListener("change", apply);
   document.querySelector("#brand-select").addEventListener("change", apply);
   document.querySelector("#sort-select").addEventListener("change", apply);
+  document.querySelector("#refresh-rate-select")?.addEventListener("change", apply);
+  document.querySelector("#screen-size-select")?.addEventListener("change", apply);
   document.querySelectorAll('input[name="store-filter"]').forEach((input) => input.addEventListener("change", apply));
   document.querySelector("#budget-range").addEventListener("input", (event) => {
     const maxInput = document.querySelector("#max-price");

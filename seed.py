@@ -15,6 +15,11 @@ LOGGER = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parent
 CATALOG_FILE = ROOT / "urunler.json"
 IMAGE_SUFFIXES = {".avif", ".jpg", ".jpeg", ".png", ".webp"}
+REFRESH_RATE_PATTERN = re.compile(r"(?<!\d)(\d{2,3})\s*(?:hz|hertz)\b", re.IGNORECASE)
+SCREEN_SIZE_PATTERN = re.compile(
+    r"(?<!\d)(\d{2}(?:[.,]\d)?)\s*(?:[\"″”]|inç|inch(?:es)?)",
+    re.IGNORECASE,
+)
 
 
 def _product_id(product_url: str) -> int:
@@ -42,11 +47,29 @@ def _category_id(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")
 
 
+def _monitor_specs(title: str) -> tuple[int | None, float | None]:
+    refresh_rates = [
+        int(match.group(1))
+        for match in REFRESH_RATE_PATTERN.finditer(title)
+        if 20 <= int(match.group(1)) <= 1000
+    ]
+    screen_sizes = [
+        float(match.group(1).replace(",", "."))
+        for match in SCREEN_SIZE_PATTERN.finditer(title)
+    ]
+    screen_sizes = [size for size in screen_sizes if 10 <= size <= 100]
+    return (
+        max(refresh_rates) if refresh_rates else None,
+        screen_sizes[0] if screen_sizes else None,
+    )
+
+
 def _normalize_product(item: dict) -> dict:
     title = str(item.get("title", "")).strip()
     category_name = str(item.get("category", "")).strip()
-    if category_name.casefold() == "oyuncu monitör":
-        category_name = "Oyuncu Monitörü"
+    normalized_category = category_name.casefold()
+    if "monitör" in normalized_category or "monitor" in normalized_category:
+        category_name = "Monitör"
     brand = str(item.get("brand", "")).strip()
     product_url = str(item.get("source_url") or "").strip()
     offers = item.get("stores")
@@ -108,6 +131,7 @@ def _normalize_product(item: dict) -> dict:
     ))
     if image_url not in gallery:
         gallery.insert(0, image_url)
+    refresh_rate_hz, screen_size_inches = _monitor_specs(title)
 
     return {
         "id": product_id,
@@ -119,6 +143,8 @@ def _normalize_product(item: dict) -> dict:
         "image_gallery": gallery,
         "description": str(item.get("description") or "").strip(),
         "tags": [str(tag).strip() for tag in tags if str(tag).strip()],
+        "refresh_rate_hz": refresh_rate_hz,
+        "screen_size_inches": screen_size_inches,
         "offers": normalized_offers,
     }
 
@@ -209,6 +235,8 @@ def seed_catalog(
                 0,
                 json.dumps(product["tags"], ensure_ascii=False),
                 json.dumps(product["image_gallery"], ensure_ascii=False),
+                product["refresh_rate_hz"],
+                product["screen_size_inches"],
             )
         )
         offer_rows.extend(
@@ -228,8 +256,9 @@ def seed_catalog(
         """INSERT INTO products
            (id, title, category, brand, current_lowest_price, old_price,
             lowest_store_name, image_url, description, price_currency, source_url,
-            rating, tags_json, image_gallery_json)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            rating, tags_json, image_gallery_json, refresh_rate_hz,
+            screen_size_inches)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         product_rows,
     )
     db.executemany(

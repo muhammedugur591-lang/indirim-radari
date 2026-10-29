@@ -86,7 +86,9 @@ def initialize_schema(db: sqlite3.Connection) -> None:
                 source_url TEXT NOT NULL DEFAULT '',
                 rating REAL NOT NULL DEFAULT 0,
                 tags_json TEXT NOT NULL DEFAULT '[]',
-                image_gallery_json TEXT NOT NULL DEFAULT '[]'
+                image_gallery_json TEXT NOT NULL DEFAULT '[]',
+                refresh_rate_hz INTEGER,
+                screen_size_inches REAL
             );
             CREATE TABLE IF NOT EXISTS store_prices (
                 id INTEGER PRIMARY KEY,
@@ -124,6 +126,8 @@ def initialize_schema(db: sqlite3.Connection) -> None:
     _ensure_column(
         db, "products", "image_gallery_json", "TEXT NOT NULL DEFAULT '[]'"
     )
+    _ensure_column(db, "products", "refresh_rate_hz", "INTEGER")
+    _ensure_column(db, "products", "screen_size_inches", "REAL")
     _ensure_column(db, "store_prices", "is_estimate", "INTEGER NOT NULL DEFAULT 0")
     _ensure_column(
         db,
@@ -189,6 +193,46 @@ def get_brands(category: str = "") -> list[str]:
     return [row["brand"] for row in rows]
 
 
+@app.get("/api/filters")
+def get_filter_facets(category: str = "monitor") -> dict:
+    with connect() as db:
+        refresh_rates = [
+            row["refresh_rate_hz"]
+            for row in db.execute(
+                """SELECT DISTINCT refresh_rate_hz FROM products
+                   WHERE category = ? AND refresh_rate_hz IS NOT NULL
+                     AND refresh_rate_hz < 360
+                   ORDER BY refresh_rate_hz""",
+                (category,),
+            ).fetchall()
+        ]
+        has_360_plus = db.execute(
+            """SELECT 1 FROM products
+               WHERE category = ? AND refresh_rate_hz >= 360 LIMIT 1""",
+            (category,),
+        ).fetchone()
+        if has_360_plus:
+            refresh_rates.append(360)
+        screen_sizes: list[float | str] = [
+            row["screen_size_inches"]
+            for row in db.execute(
+                """SELECT DISTINCT screen_size_inches FROM products
+                   WHERE category = ? AND screen_size_inches IS NOT NULL
+                     AND screen_size_inches < 34
+                   ORDER BY screen_size_inches""",
+                (category,),
+            ).fetchall()
+        ]
+        has_34_plus = db.execute(
+            """SELECT 1 FROM products
+               WHERE category = ? AND screen_size_inches >= 34 LIMIT 1""",
+            (category,),
+        ).fetchone()
+        if has_34_plus:
+            screen_sizes.append("34+")
+    return {"refresh_rates": refresh_rates, "screen_sizes": screen_sizes}
+
+
 @app.get("/api/home")
 def get_home() -> dict:
     select_card = """SELECT p.*, c.name AS category_name,
@@ -226,6 +270,10 @@ def get_products(
     store: str = "",
     min_price: Annotated[float | None, Query(ge=0)] = None,
     max_price: Annotated[float | None, Query(ge=0)] = None,
+    refresh_rate: Annotated[int | None, Query(ge=1, le=1000)] = None,
+    min_refresh_rate: Annotated[int | None, Query(ge=1, le=1000)] = None,
+    screen_size: Annotated[float | None, Query(ge=10, le=100)] = None,
+    min_screen_size: Annotated[float | None, Query(ge=10, le=100)] = None,
     sort: str = "relevance",
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ) -> dict:
@@ -247,6 +295,18 @@ def get_products(
     if max_price is not None:
         clauses.append("p.current_lowest_price <= ?")
         values.append(max_price)
+    if refresh_rate is not None:
+        clauses.append("p.refresh_rate_hz = ?")
+        values.append(refresh_rate)
+    if min_refresh_rate is not None:
+        clauses.append("p.refresh_rate_hz >= ?")
+        values.append(min_refresh_rate)
+    if screen_size is not None:
+        clauses.append("p.screen_size_inches = ?")
+        values.append(screen_size)
+    if min_screen_size is not None:
+        clauses.append("p.screen_size_inches >= ?")
+        values.append(min_screen_size)
     if store:
         clauses.append(
             "EXISTS (SELECT 1 FROM store_prices s WHERE s.product_id = p.id AND s.store_name = ?)"
