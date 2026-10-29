@@ -29,7 +29,7 @@ from urllib.parse import (
 )
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 
@@ -88,6 +88,8 @@ PRODUCTS_LOCK = threading.RLock()
 CHECK_LOCK = threading.Lock()
 RADARS_LOCK = threading.RLock()
 OFFERS_LOCK = threading.RLock()
+PRODUCT_DATABASE_LOCK = threading.RLock()
+PRODUCT_DATABASE = []
 RADAR_SCAN_LOCK = threading.Lock()
 SCAN_PROGRESS_LOCK = threading.RLock()
 SCAN_PROGRESS = {
@@ -921,6 +923,9 @@ def _save_json_list(path, entries, lock):
             temporary_file.replace(path)
         except OSError as error:
             raise RuntimeError(f"{path.name} kaydedilemedi: {error}") from error
+        if path == OFFERS_FILE:
+            with PRODUCT_DATABASE_LOCK:
+                PRODUCT_DATABASE[:] = deepcopy(entries)
 
 
 def load_radars():
@@ -980,8 +985,15 @@ def load_offers():
         if offer.get("price_history") != history:
             offer["price_history"] = history
             changed = True
+        is_discounted = isinstance(offer.get("shock_alert"), dict)
+        if offer.get("is_discounted") != is_discounted:
+            offer["is_discounted"] = is_discounted
+            changed = True
     if changed:
         _save_json_list(OFFERS_FILE, offers, OFFERS_LOCK)
+    else:
+        with PRODUCT_DATABASE_LOCK:
+            PRODUCT_DATABASE[:] = deepcopy(offers)
     return offers
 
 
@@ -1418,14 +1430,26 @@ def _search_radar_stores(radar, stores=None, on_store_complete=None):
     return results, errors
 
 
-def filter_saved_offers(query="", min_price=None, max_price=None, stores=None):
+def filter_saved_offers(
+    query="",
+    min_price=None,
+    max_price=None,
+    stores=None,
+    category="",
+    subcategory="",
+    brand="",
+):
     normalized_query = _normalized_filter_text(query.strip()) if query else ""
     query_terms = normalized_query.split()
     store_filter = set(stores or [])
-    offers = load_offers()
+    normalized_category = _normalized_filter_text(category) if category else ""
+    normalized_subcategory = _normalized_filter_text(subcategory) if subcategory else ""
+    normalized_brand = _normalized_filter_text(brand.strip()) if brand else ""
+    with PRODUCT_DATABASE_LOCK:
+        offers = tuple(PRODUCT_DATABASE)
     matching = []
     for offer in offers:
-        if not offer.get("active"):
+        if not isinstance(offer, dict) or not (offer.get("active") or offer.get("is_discounted")):
             continue
         price = offer.get("price")
         if not isinstance(price, (int, float)) or not math.isfinite(price):
@@ -1436,6 +1460,18 @@ def filter_saved_offers(query="", min_price=None, max_price=None, stores=None):
             continue
         if store_filter and offer.get("store") not in store_filter:
             continue
+        if normalized_category and _normalized_filter_text(
+            str(offer.get("category", ""))
+        ) != normalized_category:
+            continue
+        if normalized_subcategory and _normalized_filter_text(
+            str(offer.get("subcategory", ""))
+        ) != normalized_subcategory:
+            continue
+        if normalized_brand and normalized_brand not in _normalized_filter_text(
+            f"{offer.get('brand', '')} {offer.get('title', '')}"
+        ):
+            continue
         searchable_text = _normalized_filter_text(
             f"{offer.get('title', '')} {offer.get('query', '')} "
             f"{offer.get('category', '')} {offer.get('subcategory', '')} "
@@ -1443,8 +1479,13 @@ def filter_saved_offers(query="", min_price=None, max_price=None, stores=None):
         )
         if query_terms and not all(term in searchable_text for term in query_terms):
             continue
-        matching.append(offer)
-    matching.sort(key=lambda offer: offer["price"])
+        matching.append(dict(offer))
+    matching.sort(
+        key=lambda offer: (
+            not offer.get("is_discounted", False),
+            offer["price"],
+        )
+    )
     return matching
 
 
@@ -1917,7 +1958,13 @@ def _scan_radar(radar):
             )
             if shock_alert is None:
                 previous_alert = previous_offer.get("shock_alert")
-                if isinstance(previous_alert, dict):
+                if (
+                    radar.get("shock_mode") in ("amount", "percent")
+                    and isinstance(previous_alert, dict)
+                    and previous_alert.get("mode") == radar.get("shock_mode")
+                    and previous_alert.get("threshold")
+                    == radar.get("shock_threshold", 0)
+                ):
                     alert_price = previous_alert.get("current_price")
                     if (
                         isinstance(alert_price, (int, float))
@@ -1950,6 +1997,7 @@ def _scan_radar(radar):
                     checked_at,
                 ),
                 "shock_alert": shock_alert,
+                "is_discounted": shock_alert is not None,
                 "active": minimum_price <= product["price"] <= budget,
                 "last_seen": checked_at,
             }
@@ -2187,6 +2235,9 @@ def get_offers():
 @app.get("/api/search")
 def search_offers(request: Request):
     query = request.query_params.get("q", "")
+    category = request.query_params.get("category", "")
+    subcategory = request.query_params.get("subcategory", "")
+    brand = request.query_params.get("brand", "")
     try:
         min_price = (
             float(request.query_params["min_price"])
@@ -2201,6 +2252,14 @@ def search_offers(request: Request):
         stores = request.query_params.getlist("store")
         if any(store not in STORE_CONFIGS for store in stores):
             raise ValueError("Mağaza filtresi geçersiz.")
+        if category and category not in CATEGORY_CATALOG:
+            raise ValueError("Kategori filtresi geçersiz.")
+        if subcategory and (
+            not category or subcategory not in CATEGORY_CATALOG[category]
+        ):
+            raise ValueError("Alt kategori filtresi geçersiz.")
+        if len(brand) > 120:
+            raise ValueError("Marka filtresi en fazla 120 karakter olabilir.")
         if min_price is not None and (
             not math.isfinite(min_price) or min_price < 0
         ):
@@ -2215,7 +2274,15 @@ def search_offers(request: Request):
             and min_price > max_price
         ):
             raise ValueError("Minimum fiyat maksimum fiyattan büyük olamaz.")
-        return filter_saved_offers(query, min_price, max_price, stores)
+        return filter_saved_offers(
+            query,
+            min_price,
+            max_price,
+            stores,
+            category,
+            subcategory,
+            brand,
+        )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except RuntimeError as error:
@@ -2279,10 +2346,10 @@ def post_check():
 
 
 @app.post("/api/scan", status_code=202)
-def post_scan():
+def post_scan(background_tasks: BackgroundTasks):
     if RADAR_SCAN_LOCK.locked():
         raise HTTPException(status_code=409, detail="Radar taraması zaten sürüyor.")
-    threading.Thread(target=_run_all_checks, daemon=True).start()
+    background_tasks.add_task(_run_all_checks)
     return {"message": "Ürün ve radar taraması başlatıldı."}
 
 
@@ -2421,7 +2488,7 @@ def _build_radar(payload, existing=None):
     }
 
 
-def _save_and_schedule_radar(radar, *, insert=False):
+def _save_and_schedule_radar(radar, background_tasks, *, insert=False):
     radars = load_radars()
     existing_index = next(
         (index for index, item in enumerate(radars) if item["id"] == radar["id"]),
@@ -2434,20 +2501,20 @@ def _save_and_schedule_radar(radar, *, insert=False):
     else:
         radars[existing_index] = radar
     _save_json_list(RADARS_FILE, radars, RADARS_LOCK)
-    threading.Thread(
-        target=_scan_added_radar,
-        args=(radar["id"],),
-        daemon=True,
-    ).start()
+    background_tasks.add_task(_scan_added_radar, radar["id"])
     return radar
 
 
 @app.post("/api/radars", status_code=201)
-async def post_radar(request: Request):
+async def post_radar(request: Request, background_tasks: BackgroundTasks):
     payload = await _read_api_json(request)
     try:
         radar = _build_radar(payload)
-        _save_and_schedule_radar(radar, insert=True)
+        _save_and_schedule_radar(
+            radar,
+            background_tasks,
+            insert=True,
+        )
     except (TypeError, ValueError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except RuntimeError as error:
@@ -2456,7 +2523,11 @@ async def post_radar(request: Request):
 
 
 @app.put("/api/radars/{radar_id}")
-async def update_radar(radar_id: str, request: Request):
+async def update_radar(
+    radar_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+):
     payload = await _read_api_json(request)
     try:
         radars = load_radars()
@@ -2464,7 +2535,7 @@ async def update_radar(radar_id: str, request: Request):
         if existing is None:
             raise HTTPException(status_code=404, detail="Radar bulunamadı.")
         radar = _build_radar(payload, existing)
-        _save_and_schedule_radar(radar)
+        _save_and_schedule_radar(radar, background_tasks)
     except (TypeError, ValueError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except RuntimeError as error:

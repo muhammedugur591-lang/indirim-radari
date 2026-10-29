@@ -73,8 +73,8 @@
     .panel { min-width: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 13px; box-shadow: var(--shadow); }
     .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 19px 21px; border-bottom: 1px solid var(--line); }
     .feed-panel .panel-head { align-items: stretch; flex-direction: column; }
-    .offer-search { display: grid; grid-template-columns: minmax(0, 2fr) minmax(72px, .75fr) minmax(72px, .75fr); gap: 7px; }
-    .offer-search input { min-height: 36px; }
+    .offer-search { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+    .offer-search input, .offer-search select { min-height: 36px; }
     .offer-search .form-status { grid-column: 1 / -1; min-height: 0; margin: 0; }
     h2 { margin: 0; font-size: 14px; font-weight: 740; letter-spacing: -.2px; }
     .panel-caption { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
@@ -120,12 +120,17 @@
     .delete-button { display: grid; width: 30px; height: 30px; place-items: center; color: var(--muted); background: transparent; border: 1px solid transparent; border-radius: 7px; font-size: 16px; }
     .delete-button:hover { color: var(--danger); background: #ff777710; border-color: #ff777733; }
     .deal-card { display: grid; grid-template-columns: 80px minmax(0, 1fr) auto; align-items: center; gap: 13px; padding: 15px; background: linear-gradient(110deg, #c1f0780c, transparent 65%), var(--surface-raised); border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line)); border-radius: 10px; }
+    .deal-card.is-discounted { border-color: #3ca66b; background: linear-gradient(110deg, #3ca66b18, transparent 65%), var(--surface-raised); }
     .deal-card.shock-card { border-color: #ff4d4d; box-shadow: 0 0 0 1px #ff4d4d55, 0 0 22px #ff303044; animation: shock-glow 1.5s ease-in-out infinite alternate; }
     .shock-badge { display: inline-flex; align-items: center; min-height: 21px; padding: 2px 8px; color: #fff; background: #d82935; border: 1px solid #ff7178; border-radius: 6px; font-size: 9px; font-weight: 850; letter-spacing: .25px; box-shadow: 0 0 12px #ff303066; }
+    .discount-badge { display: inline-flex; align-items: center; min-height: 21px; padding: 2px 8px; color: #fff; background: #23834b; border: 1px solid #54bd7c; border-radius: 6px; font-size: 9px; font-weight: 800; }
     @keyframes shock-glow { from { box-shadow: 0 0 0 1px #ff4d4d33, 0 0 10px #ff303022; } to { box-shadow: 0 0 0 1px #ff4d4d88, 0 0 24px #ff303066; } }
     .deal-title { display: block; overflow: hidden; color: var(--text); font-size: 12px; font-weight: 720; line-height: 1.5; text-decoration: none; text-overflow: ellipsis; }
     .deal-title:hover { color: var(--accent); }
     .deal-price { color: var(--accent); font-size: 16px; font-weight: 820; letter-spacing: -.4px; white-space: nowrap; }
+    .deal-old-price { display: block; color: var(--muted); font-size: 10px; text-align: right; }
+    .seller-link { display: inline-flex; justify-content: center; min-height: 30px; margin-top: 8px; padding: 0 9px; color: var(--accent-ink); background: var(--accent); border-radius: 7px; font-size: 10px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+    .seller-link:hover { background: var(--accent-strong); }
     .deal-budget { margin-top: 4px; color: var(--muted); font-size: 9px; text-align: right; white-space: nowrap; }
     .deal-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
     .radar-status { color: var(--muted); font-size: 10px; line-height: 1.5; }
@@ -186,8 +191,10 @@
       .dashboard { grid-template-columns: 1fr; }
       .hero-actions { flex-direction: column; }
       .panel-head { padding: 16px; }
-      .offer-search { grid-template-columns: 1fr 1fr; }
+      .offer-search { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .offer-search input[type="search"] { grid-column: 1 / -1; }
+      .deal-card { grid-template-columns: 58px minmax(0, 1fr) auto; gap: 9px; padding: 11px; }
+      .deal-card .product-thumbnail { width: 58px; height: 58px; }
       .form-content { padding: 16px; }
     }
     @media (prefers-reduced-motion: no-preference) {
@@ -288,6 +295,10 @@
             <p class="panel-caption">Bütçenin altında bulunan güncel ürünler.</p>
             <div class="offer-search">
               <input id="offerSearch" type="search" placeholder="Ürün veya mağaza ara" aria-label="Ürün veya mağaza ara">
+              <input id="offerSearchBrand" type="search" placeholder="Marka" aria-label="Marka filtresi">
+              <select id="offerSearchCategory" aria-label="Kategori filtresi"><option value="">Tüm kategoriler</option></select>
+              <select id="offerSearchSubcategory" aria-label="Alt kategori filtresi" disabled><option value="">Tüm alt kategoriler</option></select>
+              <select id="offerSearchStore" aria-label="Mağaza filtresi"><option value="">Tüm mağazalar</option></select>
               <input id="offerSearchMin" type="text" inputmode="decimal" placeholder="Min TL" aria-label="En düşük fiyat filtresi">
               <input id="offerSearchMax" type="text" inputmode="decimal" placeholder="Maks. TL" aria-label="En yüksek fiyat filtresi">
               <p class="form-status" id="offerSearchStatus" role="status" aria-live="polite"></p>
@@ -447,16 +458,24 @@
     ].forEach(formatPriceInput);
 
     const offerSearchInput = document.querySelector("#offerSearch");
+    const offerSearchBrandInput = document.querySelector("#offerSearchBrand");
     const offerSearchMinInput = document.querySelector("#offerSearchMin");
     const offerSearchMaxInput = document.querySelector("#offerSearchMax");
+    const offerSearchCategory = document.querySelector("#offerSearchCategory");
+    const offerSearchSubcategory = document.querySelector("#offerSearchSubcategory");
+    const offerSearchStore = document.querySelector("#offerSearchStore");
     const offerSearchStatus = document.querySelector("#offerSearchStatus");
     [offerSearchMinInput, offerSearchMaxInput].forEach(formatPriceInput);
 
     function hasOfferSearchFilters() {
       return Boolean(
         offerSearchInput.value.trim()
+        || offerSearchBrandInput.value.trim()
         || offerSearchMinInput.value.trim()
         || offerSearchMaxInput.value.trim()
+        || offerSearchCategory.value
+        || offerSearchSubcategory.value
+        || offerSearchStore.value
       );
     }
 
@@ -470,6 +489,7 @@
       }
       const params = new URLSearchParams();
       const query = offerSearchInput.value.trim();
+      const brand = offerSearchBrandInput.value.trim();
       const minPrice = parseLocalizedPrice(offerSearchMinInput.value);
       const maxPrice = parseLocalizedPrice(offerSearchMaxInput.value);
       if (offerSearchMinInput.value.trim() && minPrice === null) {
@@ -485,6 +505,12 @@
       if (minPrice !== null) params.set("min_price", String(minPrice));
       if (maxPrice !== null) params.set("max_price", String(maxPrice));
       if (query) params.set("q", query);
+      if (brand) params.set("brand", brand);
+      if (offerSearchCategory.value) params.set("category", offerSearchCategory.value);
+      if (offerSearchSubcategory.value) {
+        params.set("subcategory", offerSearchSubcategory.value);
+      }
+      if (offerSearchStore.value) params.set("store", offerSearchStore.value);
       offerSearchResults = [];
       offerSearchStatus.removeAttribute("data-error");
       offerSearchStatus.textContent = "Ürünler aranıyor...";
@@ -507,8 +533,22 @@
     }
 
     offerSearchInput.addEventListener("input", refreshOfferSearch);
+    offerSearchBrandInput.addEventListener("input", refreshOfferSearch);
     offerSearchMinInput.addEventListener("input", refreshOfferSearch);
     offerSearchMaxInput.addEventListener("input", refreshOfferSearch);
+    offerSearchStore.addEventListener("change", refreshOfferSearch);
+    offerSearchCategory.addEventListener("change", () => {
+      const subcategories = Object.keys(
+        categoryCatalog[offerSearchCategory.value] || {}
+      );
+      setSelectOptions(
+        offerSearchSubcategory,
+        subcategories,
+        "Tüm alt kategoriler"
+      );
+      void refreshOfferSearch();
+    });
+    offerSearchSubcategory.addEventListener("change", refreshOfferSearch);
 
     function setFormStatus(element, message, isError = false) {
       element.textContent = message;
@@ -788,6 +828,16 @@
       selectedStores = Object.values(storeGroups).flat();
       renderStoreSelection();
       setSelectOptions(categorySelect, Object.keys(categoryCatalog), "Kategori seçin");
+      setSelectOptions(
+        offerSearchCategory,
+        Object.keys(categoryCatalog),
+        "Tüm kategoriler"
+      );
+      setSelectOptions(
+        offerSearchStore,
+        Object.values(storeGroups).flat(),
+        "Tüm mağazalar"
+      );
     }
 
     async function showPriceHistory(type, id) {
@@ -972,8 +1022,13 @@
       dashboardOffers = [];
       offerSearchResults = null;
       offerSearchInput.value = "";
+      offerSearchBrandInput.value = "";
       offerSearchMinInput.value = "";
       offerSearchMaxInput.value = "";
+      offerSearchCategory.value = "";
+      offerSearchSubcategory.replaceChildren(new Option("Tüm alt kategoriler", ""));
+      offerSearchSubcategory.disabled = true;
+      offerSearchStore.value = "";
       offerSearchStatus.textContent = "";
       offerSearchRequest += 1;
       currentScanProgress = null;
@@ -1059,7 +1114,16 @@
         list.append(createEmpty("⌕", "Aktif radar yok", "Mağaza ve arama özelliği ekleyerek başla."));
         return;
       }
-      for (const radar of radars) {
+      const sortedRadars = [...radars].sort((left, right) => {
+        const leftDiscounts = dashboardOffers.filter(
+          (offer) => offer.radar_id === left.id && offer.is_discounted
+        ).length;
+        const rightDiscounts = dashboardOffers.filter(
+          (offer) => offer.radar_id === right.id && offer.is_discounted
+        ).length;
+        return rightDiscounts - leftDiscounts;
+      });
+      for (const radar of sortedRadars) {
         const card = document.createElement("article");
         card.className = "item-card";
         const content = document.createElement("div");
@@ -1074,6 +1138,15 @@
           ? radar.stores
           : radar.store === "all" ? Object.values(storeGroups).flat() : [radar.store];
         meta.append(createBadge(`${radarStores.length} mağaza`));
+        const discountedCount = dashboardOffers.filter(
+          (offer) => offer.radar_id === radar.id && offer.is_discounted
+        ).length;
+        if (discountedCount) {
+          const discount = document.createElement("span");
+          discount.className = "discount-badge";
+          discount.textContent = `${discountedCount} şok indirim`;
+          meta.append(discount);
+        }
         for (const store of radarStores) {
           meta.append(createBadge(store));
         }
@@ -1114,8 +1187,12 @@
 
     function renderOffers(offers) {
       const activeOffers = offers
-        .filter((offer) => offer.active || offer.shock_alert)
-        .sort((left, right) => left.price - right.price);
+        .filter((offer) => offer.active || offer.is_discounted || offer.shock_alert)
+        .sort((left, right) => {
+          const discountOrder = Number(Boolean(right.is_discounted)) -
+            Number(Boolean(left.is_discounted));
+          return discountOrder || left.price - right.price;
+        });
       const list = document.querySelector("#offerList");
       list.replaceChildren();
       document.querySelector("#offerCount").textContent = String(activeOffers.length);
@@ -1142,7 +1219,7 @@
       });
       for (const offer of pageOffers) {
         const card = document.createElement("article");
-        card.className = `deal-card${offer.shock_alert ? " shock-card" : ""}`;
+        card.className = `deal-card${offer.is_discounted ? " is-discounted" : ""}${offer.shock_alert ? " shock-card" : ""}`;
         card.append(createThumbnail(offer.image_url, offer.title));
         const content = document.createElement("div");
         const title = document.createElement("a");
@@ -1156,6 +1233,12 @@
         meta.append(createBadge(offer.store), createBadge(offer.query));
         if (offer.filter_fallback) {
           meta.append(createBadge("Esnek özellik eşleşmesi"));
+        }
+        if (offer.is_discounted) {
+          const discountBadge = document.createElement("span");
+          discountBadge.className = "discount-badge";
+          discountBadge.textContent = "Fiyat düştü";
+          meta.append(discountBadge);
         }
         for (const value of selectedFilterValues(offer)) {
           meta.append(createBadge(value));
@@ -1178,6 +1261,17 @@
         meta.append(seen);
         content.append(title, meta);
         const priceColumn = document.createElement("div");
+        const history = Array.isArray(offer.price_history) ? offer.price_history : [];
+        const previousPrice = Number(
+          offer.shock_alert?.previous_price
+          ?? (history.length > 1 ? history[history.length - 2]?.price : NaN)
+        );
+        if (Number.isFinite(previousPrice) && previousPrice > Number(offer.price)) {
+          const oldPrice = document.createElement("del");
+          oldPrice.className = "deal-old-price";
+          oldPrice.textContent = `${previousPrice.toLocaleString("tr-TR")} TL`;
+          priceColumn.append(oldPrice);
+        }
         const price = document.createElement("div");
         price.className = "deal-price";
         price.textContent = `${Number(offer.price).toLocaleString("tr-TR")} TL`;
@@ -1188,6 +1282,13 @@
           ? `Aralık ${minimumPrice.toLocaleString("tr-TR")}–${Number(offer.max_price).toLocaleString("tr-TR")} TL`
           : `Bütçe ${Number(offer.max_price).toLocaleString("tr-TR")} TL`;
         priceColumn.append(price, budget);
+        const sellerLink = document.createElement("a");
+        sellerLink.className = "seller-link";
+        sellerLink.href = offer.url;
+        sellerLink.target = "_blank";
+        sellerLink.rel = "noopener noreferrer";
+        sellerLink.textContent = "Satıcıya Git";
+        priceColumn.append(sellerLink);
         if (!offer.provisional) {
           priceColumn.append(createHistoryButton("offers", offer.id));
         }
@@ -1267,8 +1368,8 @@
         (offer) => !deletedRadarIds.has(offer.radar_id)
       );
       renderProducts(visibleProducts);
-      renderRadars(visibleRadars);
       dashboardOffers = visibleOffers;
+      renderRadars(visibleRadars);
       if (hasOfferSearchFilters()) {
         void refreshOfferSearch();
       } else {
