@@ -1,2933 +1,446 @@
-﻿import os
+from __future__ import annotations
 
-import asyncio
-import json
 import math
-import re
-import threading
-import time
-import unicodedata
-import uuid
-import webbrowser
-import httpx
-from bs4 import BeautifulSoup
-from copy import deepcopy
-from contextlib import asynccontextmanager
-from json import JSONDecodeError
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
-from decimal import Decimal, InvalidOperation
-from html import unescape
+import sqlite3
+from contextlib import asynccontextmanager, contextmanager
+from datetime import date, timedelta
 from pathlib import Path
-from urllib.parse import (
-    parse_qs,
-    quote,
-    quote_plus,
-    urlencode,
-    urljoin,
-    urlsplit,
-    urlunsplit,
-)
+from typing import Annotated, Iterator
+from urllib.parse import quote_plus
 
-import uvicorn
-import database
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
 
 
-HOST = os.environ.get("HOST", "127.0.0.1")
-PORT = int(os.environ.get("PORT", "8000"))
-OPEN_BROWSER = os.environ.get("OPEN_BROWSER", "1").strip().lower() not in {
-    "0",
-    "false",
-    "no",
-}
-CHECK_INTERVAL_SECONDS = 10 * 60
-MAX_SEARCH_RESULTS = 50
-HTTP_TIMEOUT_SECONDS = 12
-STORE_SCAN_TIMEOUT_SECONDS = 36
-DEFAULT_SCAN_DEPTH = 3
-MAX_SCAN_DEPTH = 10
-MAX_CONCURRENT_REQUESTS = 2
-HTTP_HEADERS = {
-    "User-Agent": "IndirimRadari/1.0",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
-}
-ALL_STORES = "all"
-ALL_FILTERS = "Tümünü Seç"
 ROOT = Path(__file__).resolve().parent
-PRODUCTS_FILE = ROOT / "products.json"
-RADARS_FILE = ROOT / "radars.json"
-OFFERS_FILE = ROOT / "offers.json"
-PRODUCTS_DB_FILE = ROOT / "products_db.json"
-PRICE_TOKEN = re.compile(r"(?<!\d)\d[\d.,\s]*\d(?!\d)|(?<!\d)\d(?!\d)")
-PRICE_WITH_CURRENCY = re.compile(
-    r"(?:₺\s*\d[\d.,\s]*\d|\d[\d.,\s]*\d\s*(?:₺|TL|TRY))",
-    re.IGNORECASE,
-)
-PRODUCT_SELECTORS = (
-    ".price-view .discounted",
-    ".prc-dsc",
-    '[data-testid="price-current-price"]',
-    "#corePrice_feature_div .a-offscreen",
-    "#apex_desktop .a-offscreen",
-    "#price_inside_buybox",
-    "#priceblock_dealprice",
-    "#priceblock_ourprice",
-    '[data-test-id="price"]',
-    '[itemprop="price"]',
-    ".product-detail-price",
-    ".product-price",
-    ".price-current",
-    ".current-price",
-    ".a-price .a-offscreen",
-)
+DATABASE = ROOT / "akakce_catalog.db"
+INDEX_FILE = ROOT / "index.html"
 
-PRODUCTS_LOCK = threading.RLock()
-CHECK_LOCK = threading.Lock()
-RADARS_LOCK = threading.RLock()
-OFFERS_LOCK = threading.RLock()
-PRODUCT_DATABASE_LOCK = threading.RLock()
-PRODUCT_DATABASE = []
-CATALOG_REFRESH_LOCK = threading.Lock()
-OFFER_SYNC_LOCK = threading.Lock()
-OFFER_SYNCING = set()
-OFFER_SYNC_TASKS = set()
-OFFER_SYNC_ERRORS = {}
-RADAR_SCAN_LOCK = threading.Lock()
-SCAN_PROGRESS_LOCK = threading.RLock()
-SCAN_PROGRESS = {
-    "active": False,
-    "radar_id": None,
-    "query": "",
-    "max_price": 0,
-    "completed_stores": [],
-    "pending_stores": [],
-    "products": [],
-}
+CATEGORY_DATA = [
+    ("monitor", "Monitör", "🖥️"),
+    ("ekran-karti", "Ekran Kartı", "🎮"),
+    ("laptop", "Laptop / Dizüstü", "💻"),
+    ("cep-telefonu", "Cep Telefonu", "📱"),
+    ("islemci", "İşlemci", "⚙️"),
+    ("ram", "RAM", "🧠"),
+    ("ssd-sabit-disk", "SSD / Sabit Disk", "💾"),
+    ("anakart", "Anakart", "🔌"),
+    ("oyuncu-kulakligi", "Oyuncu Kulaklığı", "🎧"),
+    ("klavye", "Klavye", "⌨️"),
+    ("mouse", "Mouse", "🖱️"),
+    ("akilli-saat", "Akıllı Saat", "⌚"),
+    ("tablet", "Tablet", "📲"),
+    ("televizyon", "Televizyon", "📺"),
+    ("oyun-konsolu", "Oyun Konsolu", "🕹️"),
+    ("kulaklik", "Kulaklık", "🎵"),
+    ("depolama", "Harici Depolama", "🗄️"),
+    ("bilgisayar", "Masaüstü Bilgisayar", "🖥️"),
+]
 
-STORE_CONFIGS = {
-    "Gaming.gen.tr": {
-        "domain": "gaming.gen.tr",
-        "search_url": "https://www.gaming.gen.tr/?s={query}&post_type=product",
-        "page_param": "paged",
-        "cards": (
-            "li.product",
-            ".product-inner",
-            ".product-small",
-            ".product-item",
-            ".product",
-            '[class*="product-card"]',
-        ),
-        "prices": (
-            ".price ins .amount",
-            ".price .amount",
-            ".price",
-            ".product-price",
-            '[itemprop="price"]',
-        ),
-    },
-    "Trendyol": {
-        "domain": "trendyol.com",
-        "search_url": "https://www.trendyol.com/sr?q={query}",
-        "page_param": "pi",
-        "cards": (
-            '[data-testid="product-card"]',
-            ".p-card-chld",
-            ".p-card-wrppr",
-            ".product-card",
-            '[class*="product-card"]',
-        ),
-        "prices": (
-            ".prct-box-w",
-            ".prc-box-dscntd",
-            ".prc-dsc",
-            ".price-view .discounted",
-            '[data-testid="price-current-price"]',
-        ),
-    },
-    "Hepsiburada": {
-        "domain": "hepsiburada.com",
-        "search_url": "https://www.hepsiburada.com/ara?q={query}",
-        "page_param": "sayfa",
-        "cards": (
-            '[data-test-id="product-card"]',
-            '[data-testid="product-card"]',
-            "li[class*='productListContent']",
-            ".productListContent-item",
-            "li[class*='productList']",
-            ".productListItem",
-            "[data-productid]",
-        ),
-        "prices": (
-            '[data-test-id="price"]',
-            '[data-testid="price"]',
-            '[itemprop="price"]',
-            ".price-value",
-            ".product-price",
-        ),
-    },
-    "Amazon": {
-        "domain": "amazon.com.tr",
-        "search_url": "https://www.amazon.com.tr/s?k={query}",
-        "page_param": "page",
-        "cards": ('[data-component-type="s-search-result"]',),
-        "prices": (
-            ".a-price .a-offscreen",
-            ".a-price-whole",
-            ".a-price",
-        ),
-    },
-    "İtopya": {
-        "domain": "itopya.com",
-        "search_url": "https://www.itopya.com/ara?bul={query}",
-        "page_param": "pg",
-        "cards": (
-            ".product",
-            ".product-body",
-            ".productItem",
-            ".product-item",
-            ".product-card",
-            "div[class*='product-item']",
-        ),
-        "prices": (
-            ".product-price",
-            ".price",
-            ".current-price",
-            '[itemprop="price"]',
-        ),
-    },
-    "İncehesap": {
-        "domain": "incehesap.com",
-        "search_url": "https://www.incehesap.com/arama/{query_path}/",
-        "page_param": "pg",
-        "cards": (
-            ".product-item",
-            ".product_box",
-            ".product-list-item",
-            ".product-card",
-            "div[data-product-id]",
-            "div[data-product]",
-            "div[class*='product-item']",
-        ),
-        "prices": (
-            ".product-price",
-            ".productPrice",
-            ".price-current",
-            ".current-price",
-            '[itemprop="price"]',
-        ),
-    },
-    "Sinerji": {
-        "domain": "sinerji.gen.tr",
-        "search_url": "https://www.sinerji.gen.tr/arama?q={query}",
-        "page_param": "page",
-        "cards": (
-            "div[class*='product']",
-            "div.card",
-            ".product-list-item",
-            ".product-item",
-            ".productItem",
-            ".product-card",
-            ".product-box",
-            '[class*="product-item"]',
-        ),
-        "prices": (
-            ".price",
-            ".product-price",
-            ".new-price",
-            '[itemprop="price"]',
-        ),
-    },
-    "Tebilon": {
-        "domain": "tebilon.com",
-        "search_url": "https://www.tebilon.com/arama/{query_path}/",
-        "page_param": "page",
-        "cards": (
-            ".product-item",
-            ".productItem",
-            ".product-card",
-            ".product-box",
-            '[class*="product-item"]',
-        ),
-        "prices": (
-            ".price",
-            ".product-price",
-            ".new-price",
-            '[itemprop="price"]',
-        ),
-    },
-    "Vatan Bilgisayar": {
-        "domain": "vatanbilgisayar.com",
-        "search_url": "https://www.vatanbilgisayar.com/arama/{query_path}/",
-        "page_param": "page",
-        "cards": (
-            ".product-list",
-            ".product-list__item",
-            ".product-item",
-            ".product-card",
-            '[class*="product-list"]',
-        ),
-        "prices": (
-            ".product-list__price",
-            ".product-list__content .product-list__price",
-            ".product-list__price--current",
-            ".product-price",
-            '[itemprop="price"]',
-        ),
-    },
-    "N11": {
-        "domain": "n11.com",
-        "search_url": "https://www.n11.com/arama?q={query}",
-        "page_param": "pg",
-        "cards": (
-            ".column",
-            ".product-item",
-            ".pro",
-            ".product-card",
-            '[class*="productList"]',
-        ),
-        "prices": (
-            ".price",
-            ".newPrice",
-            ".priceContainer",
-            ".product-price",
-            '[itemprop="price"]',
-        ),
-    },
-}
+# Curated demo catalog; prices and offers are illustrative, not live market data.
+PRODUCT_DATA = [
+    ("monitor", "ASUS TUF Gaming VG27AQ1A 27 inç QHD 170Hz", "ASUS", 10999, "27 inç, 2560×1440, Fast IPS, 170 Hz, 1 ms, Adaptive-Sync"),
+    ("monitor", "Samsung Odyssey G5 LS27CG552 27 inç QHD 165Hz", "Samsung", 8299, "27 inç, QHD, VA panel, 165 Hz, 1 ms, HDR10"),
+    ("monitor", "MSI MAG 274QRF QD E2 27 inç QHD 180Hz", "MSI", 14999, "Rapid IPS, QHD, 180 Hz, Quantum Dot, USB-C"),
+    ("monitor", "AOC 24G4X 23.8 inç Full HD 180Hz", "AOC", 5499, "Fast IPS, 1920×1080, 180 Hz, 1 ms, Adaptive-Sync"),
+    ("monitor", "Dell UltraSharp U2723QE 27 inç 4K", "Dell", 22999, "27 inç IPS Black, 4K UHD, USB-C hub, 90 W güç aktarımı"),
+    ("monitor", "LG UltraGear 27GS60F-B 27 inç 180Hz", "LG", 6999, "Full HD IPS, 180 Hz, 1 ms, HDR10, FreeSync"),
+    ("ekran-karti", "ASUS Dual GeForce RTX 4060 OC 8GB", "ASUS", 15999, "NVIDIA Ada Lovelace, 8 GB GDDR6, DLSS 3, çift fan"),
+    ("ekran-karti", "MSI GeForce RTX 4070 SUPER Ventus 2X 12GB", "MSI", 32999, "12 GB GDDR6X, DLSS 3.5, ışın izleme, çift fan"),
+    ("ekran-karti", "Gigabyte GeForce RTX 4070 Ti SUPER Gaming OC 16GB", "Gigabyte", 44999, "16 GB GDDR6X, WINDFORCE soğutma, DLSS 3"),
+    ("ekran-karti", "Sapphire Pulse Radeon RX 7800 XT 16GB", "AMD", 23999, "16 GB GDDR6, RDNA 3, 1440p oyun, çift fan"),
+    ("ekran-karti", "Gigabyte Radeon RX 7600 Gaming OC 8GB", "Gigabyte", 11999, "8 GB GDDR6, RDNA 3, üç fanlı soğutma"),
+    ("ekran-karti", "ASUS TUF Gaming GeForce RTX 4080 SUPER 16GB", "ASUS", 59999, "16 GB GDDR6X, DLSS 3, gelişmiş ışın izleme"),
+    ("laptop", "Lenovo LOQ 15IRX9 i7-13650HX 16GB 512GB RTX 4060", "Lenovo", 42999, "Core i7-13650HX, 15.6 inç FHD 144 Hz, 16 GB RAM, RTX 4060"),
+    ("laptop", "ASUS TUF Gaming A15 FA507NV Ryzen 7 7735HS", "ASUS", 37999, "Ryzen 7, 15.6 inç 144 Hz, 16 GB RAM, RTX 4060"),
+    ("laptop", "Apple MacBook Air 13 M3 16GB 512GB", "Apple", 49999, "Apple M3, 13.6 inç Liquid Retina, 16 GB birleşik bellek"),
+    ("laptop", "Dell Inspiron 15 3530 Core i5 16GB 512GB", "Dell", 23999, "Core i5-1335U, 15.6 inç FHD, 16 GB DDR4, 512 GB SSD"),
+    ("laptop", "HP Victus 16 Ryzen 7 8845HS RTX 4070", "HP", 55999, "Ryzen 7 8845HS, 16.1 inç 144 Hz, RTX 4070, 1 TB SSD"),
+    ("laptop", "Lenovo IdeaPad Slim 3 Ryzen 5 7530U 16GB", "Lenovo", 18999, "Ryzen 5 7530U, 15.6 inç FHD IPS, 16 GB RAM, 512 GB SSD"),
+    ("cep-telefonu", "Apple iPhone 15 128GB", "Apple", 41999, "6.1 inç Super Retina XDR, A16 Bionic, 48 MP ana kamera"),
+    ("cep-telefonu", "Apple iPhone 16 Pro 256GB", "Apple", 74999, "6.3 inç ProMotion OLED, A18 Pro, 48 MP üçlü kamera"),
+    ("cep-telefonu", "Samsung Galaxy S24 Ultra 256GB", "Samsung", 61999, "6.8 inç Dynamic AMOLED 2X, Snapdragon 8 Gen 3, S Pen"),
+    ("cep-telefonu", "Samsung Galaxy A55 5G 256GB", "Samsung", 17999, "6.6 inç Super AMOLED, 120 Hz, 50 MP OIS, 5000 mAh"),
+    ("cep-telefonu", "Xiaomi Redmi Note 13 Pro 5G 256GB", "Xiaomi", 13999, "6.67 inç AMOLED 120 Hz, 200 MP OIS, 5100 mAh"),
+    ("cep-telefonu", "Samsung Galaxy Z Flip6 256GB", "Samsung", 49999, "Katlanabilir Dynamic AMOLED 2X, Snapdragon 8 Gen 3, 50 MP"),
+    ("islemci", "AMD Ryzen 7 7800X3D 4.2GHz AM5", "AMD", 15999, "8 çekirdek, 16 izlek, 96 MB önbellek, 120 W TDP"),
+    ("islemci", "AMD Ryzen 5 7600 3.8GHz AM5", "AMD", 7999, "6 çekirdek, 12 izlek, 32 MB önbellek, 65 W TDP"),
+    ("islemci", "Intel Core i5-14600KF 3.5GHz LGA1700", "Intel", 10999, "14 çekirdek, 20 izlek, 5.3 GHz turbo, kilitsiz"),
+    ("islemci", "Intel Core i7-14700K 3.4GHz LGA1700", "Intel", 17999, "20 çekirdek, 28 izlek, 5.6 GHz turbo, UHD 770"),
+    ("islemci", "AMD Ryzen 9 9950X 4.3GHz AM5", "AMD", 30999, "16 çekirdek, 32 izlek, Zen 5, 64 MB L3 önbellek"),
+    ("islemci", "Intel Core Ultra 7 265K LGA1851", "Intel", 20999, "20 çekirdek, 20 izlek, NPU, 5.5 GHz turbo"),
+    ("ram", "Corsair Vengeance 32GB (2x16) DDR5 6000MHz", "Corsair", 3999, "32 GB kit, DDR5-6000, CL36, AMD EXPO ve Intel XMP"),
+    ("ram", "Kingston Fury Beast 16GB DDR5 5600MHz", "Kingston", 1799, "16 GB DDR5, 5600 MT/s, CL40, Intel XMP 3.0"),
+    ("ram", "G.Skill Trident Z5 Neo RGB 32GB DDR5 6000MHz", "G.Skill", 4999, "2×16 GB DDR5, 6000 MT/s, CL30, AMD EXPO"),
+    ("ram", "Crucial Pro 64GB (2x32) DDR5 5600MHz", "Crucial", 6999, "64 GB kit, DDR5-5600, düşük profilli soğutucu"),
+    ("ssd-sabit-disk", "Samsung 990 PRO 2TB NVMe M.2 SSD", "Samsung", 6999, "PCIe 4.0 x4, 7450/6900 MB/sn, 2 GB DRAM"),
+    ("ssd-sabit-disk", "WD Black SN770 1TB NVMe M.2 SSD", "Western Digital", 3299, "PCIe 4.0, 5150 MB/sn okuma, M.2 2280"),
+    ("ssd-sabit-disk", "Kingston NV2 1TB NVMe M.2 SSD", "Kingston", 2299, "PCIe 4.0 x4, 3500 MB/sn okuma, M.2 2280"),
+    ("ssd-sabit-disk", "Crucial MX500 1TB SATA SSD", "Crucial", 2799, "2.5 inç SATA, 560/510 MB/sn, 3D NAND"),
+    ("ssd-sabit-disk", "Seagate BarraCuda 2TB 3.5 inç HDD", "Seagate", 2599, "7200 RPM, SATA 6 Gb/sn, 256 MB önbellek"),
+    ("anakart", "MSI MAG B650 Tomahawk WiFi AM5", "MSI", 9999, "AMD B650, DDR5, Wi-Fi 6E, 2.5G LAN, PCIe 4.0"),
+    ("anakart", "ASUS TUF Gaming B650-PLUS WiFi AM5", "ASUS", 10499, "AMD B650, DDR5, Wi-Fi 6, 3× M.2, USB-C"),
+    ("anakart", "Gigabyte B760 AORUS Elite AX DDR5", "Gigabyte", 9299, "Intel LGA1700, DDR5, Wi-Fi 6E, PCIe 5.0"),
+    ("anakart", "ASUS ROG Strix Z790-F Gaming WiFi II", "ASUS", 20999, "Intel Z790, LGA1700, DDR5, Wi-Fi 7, PCIe 5.0"),
+    ("oyuncu-kulakligi", "SteelSeries Arctis Nova 7 Wireless", "SteelSeries", 9999, "2.4 GHz kablosuz, 38 saat pil, çift ses bağlantısı"),
+    ("oyuncu-kulakligi", "Logitech G Pro X 2 Lightspeed", "Logitech", 10999, "50 mm grafen sürücüler, Lightspeed, 50 saat pil"),
+    ("oyuncu-kulakligi", "HyperX Cloud III Wireless", "HyperX", 5999, "2.4 GHz kablosuz, 120 saat pil, 53 mm sürücüler"),
+    ("oyuncu-kulakligi", "Razer BlackShark V2 X", "Razer", 2499, "3.5 mm bağlantı, 50 mm sürücüler, 240 g hafif tasarım"),
+    ("klavye", "Logitech G Pro X TKL Lightspeed", "Logitech", 7999, "Kablosuz mekanik TKL, GX anahtarlar, RGB LIGHTSYNC"),
+    ("klavye", "SteelSeries Apex Pro TKL Gen 3", "SteelSeries", 11999, "OmniPoint 3.0 ayarlanabilir anahtar, OLED ekran, RGB"),
+    ("klavye", "Keychron K2 Pro RGB Hot-swap", "Keychron", 4499, "75% kablosuz mekanik, QMK/VIA, hot-swap anahtar"),
+    ("klavye", "Redragon K552 Kumara RGB", "Redragon", 1499, "TKL mekanik, RGB aydınlatma, metal üst plaka"),
+    ("mouse", "Logitech G Pro X Superlight 2", "Logitech", 5499, "60 g, HERO 2 sensör, 32.000 DPI, Lightspeed"),
+    ("mouse", "Razer DeathAdder V3 Pro", "Razer", 4999, "Ergonomik kablosuz, Focus Pro 30K sensör, 63 g"),
+    ("mouse", "Logitech G305 Lightspeed", "Logitech", 1499, "Kablosuz HERO sensör, 12.000 DPI, 250 saat pil"),
+    ("mouse", "SteelSeries Rival 5", "SteelSeries", 2299, "18.000 CPI optik sensör, 9 programlanabilir tuş"),
+    ("akilli-saat", "Apple Watch Series 10 GPS 46mm", "Apple", 17999, "Always-On Retina, EKG, uyku apnesi bildirimi, 50 m suya dayanıklı"),
+    ("akilli-saat", "Samsung Galaxy Watch7 44mm Bluetooth", "Samsung", 9999, "Super AMOLED, BioActive sensör, Wear OS, GPS"),
+    ("akilli-saat", "Huawei Watch GT 5 46mm", "Huawei", 8999, "AMOLED ekran, 14 güne kadar pil, çift bant GPS"),
+    ("akilli-saat", "Garmin Forerunner 265", "Garmin", 17999, "AMOLED, çok bantlı GPS, antrenman hazırlık puanı"),
+    ("tablet", "Apple iPad Air 11 inç M2 Wi-Fi 128GB", "Apple", 27999, "M2 çip, Liquid Retina, Apple Pencil Pro desteği"),
+    ("tablet", "Samsung Galaxy Tab S9 FE Wi-Fi 128GB", "Samsung", 14999, "10.9 inç LCD, S Pen, IP68, Exynos 1380"),
+    ("tablet", "Lenovo Tab P12 8GB 256GB", "Lenovo", 12999, "12.7 inç 3K ekran, JBL dört hoparlör, kalem desteği"),
+    ("tablet", "Xiaomi Pad 6 8GB 256GB", "Xiaomi", 11999, "11 inç 2.8K 144 Hz, Snapdragon 870, Dolby Vision"),
+    ("televizyon", "Samsung 55 inç QN90D Neo QLED 4K", "Samsung", 59999, "Neo QLED Mini LED, 4K 144 Hz, Quantum Matrix"),
+    ("televizyon", "LG OLED55C4 55 inç OLED evo 4K", "LG", 64999, "OLED evo, 4K 144 Hz, α9 Gen7 işlemci, Dolby Vision"),
+    ("televizyon", "TCL 55C755 55 inç Mini LED 4K", "TCL", 32999, "QD-Mini LED, 4K 144 Hz, Google TV, Dolby Vision IQ"),
+    ("televizyon", "Samsung 50 inç DU8000 Crystal UHD 4K", "Samsung", 22999, "Crystal UHD, 4K, Tizen Smart TV, HDR10+"),
+    ("oyun-konsolu", "Sony PlayStation 5 Slim Digital Edition", "Sony", 23999, "1 TB SSD, 4K oyun, ışın izleme, DualSense kontrolcü"),
+    ("oyun-konsolu", "Sony PlayStation 5 Slim Disc Edition", "Sony", 26999, "1 TB SSD, Ultra HD Blu-ray, 4K oyun, DualSense"),
+    ("oyun-konsolu", "Microsoft Xbox Series X 1TB", "Microsoft", 27999, "4K oyun, 1 TB NVMe SSD, Quick Resume, Game Pass"),
+    ("oyun-konsolu", "Nintendo Switch OLED 64GB", "Nintendo", 14999, "7 inç OLED, çıkarılabilir Joy-Con, TV ve taşınabilir mod"),
+    ("kulaklik", "Apple AirPods Pro 2 USB-C", "Apple", 9999, "Aktif gürültü engelleme, uyarlanabilir ses, USB-C şarj kutusu"),
+    ("kulaklik", "Sony WH-1000XM5 Kablosuz Kulaklık", "Sony", 11999, "Aktif gürültü engelleme, 30 saat pil, LDAC"),
+    ("kulaklik", "Samsung Galaxy Buds3 Pro", "Samsung", 7499, "Adaptif ANC, 24-bit ses, IP57, Galaxy AI"),
+    ("kulaklik", "JBL Tune 770NC Kablosuz Kulaklık", "JBL", 3299, "Uyarlanabilir ANC, 70 saate kadar pil, Bluetooth 5.3"),
+    ("depolama", "SanDisk Extreme Portable SSD 1TB", "SanDisk", 4999, "USB 3.2 Gen 2, 1050 MB/sn, IP65, taşınabilir SSD"),
+    ("depolama", "Samsung T7 Shield 2TB Taşınabilir SSD", "Samsung", 8999, "USB 3.2, 1050 MB/sn, IP65 dayanıklılık"),
+    ("depolama", "WD My Passport 4TB Taşınabilir HDD", "Western Digital", 4999, "USB 3.2, 4 TB kapasite, parola koruması"),
+    ("bilgisayar", "MSI MAG Infinite S3 i5-14400F RTX 4060", "MSI", 42999, "Core i5-14400F, RTX 4060, 16 GB DDR5, 1 TB NVMe SSD"),
+    ("bilgisayar", "HP Omen 25L Ryzen 7 8700G RTX 4060 Ti", "HP", 58999, "Ryzen 7 8700G, RTX 4060 Ti, 32 GB DDR5, 1 TB SSD"),
+    ("bilgisayar", "Lenovo Legion Tower 5 i7-14700F RTX 4070", "Lenovo", 74999, "Core i7-14700F, RTX 4070, 32 GB DDR5, 1 TB SSD"),
+]
 
-NEGATIVE_KEYWORD_STEMS = (
-    "kolu",
-    "stand",
-    "aski",
-    "askilik",
-    "koruyucu",
-    "film",
-    "kablo",
-    "adapt",
-    "temizle",
-    "canta",
-    "kilif",
-    "braket",
-    "tutucu",
-    "amortisor",
-    "yedek",
-    "replacement",
-    "sogutucu",
-    "cooler",
-    "kirilm",
-    "ekran koruma",
-    "guc kablo",
-)
-
-STORE_GROUPS = {
-    "Hazır Sistem & Oyuncu Mağazaları": (
-        "Gaming.gen.tr",
-        "İtopya",
-        "İncehesap",
-        "Sinerji",
-        "Tebilon",
-        "Vatan Bilgisayar",
-    ),
-    "Pazaryerleri": (
-        "Amazon",
-        "Hepsiburada",
-        "Trendyol",
-        "N11",
-    ),
-}
-
-CATEGORY_CATALOG = {
-    "Bilgisayar & Donanım": {
-        "Masaüstü Bilgisayar": ("Gaming", "İş İstasyonu", "Hazır Sistem"),
-        "Monitör": (),
-        "Ekran Kartı": ("RTX 4060", "RTX 4070", "RX 7600"),
-        "Laptop": ("RTX 4060", "RTX 4070", "16GB RAM", "OLED"),
-        "İşlemci": ("Ryzen 7", "Intel Core i7", "Ryzen 5"),
-        "Anakart": ("AM5", "LGA1700", "DDR5"),
-        "Bellek (RAM)": ("16GB", "32GB", "DDR5"),
-        "SSD & Depolama": ("1TB NVMe", "2TB NVMe", "Harici SSD"),
-        "Bilgisayar Kasası": ("Mini Tower", "Mid Tower", "Full Tower"),
-        "Güç Kaynağı": ("650W", "750W", "80+ Gold"),
-        "Soğutma": ("Sıvı Soğutma", "240mm", "360mm"),
-    },
-    "Çevre Birimleri": {
-        "Klavye": ("Mekanik", "Kablosuz", "TKL"),
-        "Oyuncu Faresi": ("Kablosuz", "8000 DPI+", "Hafif"),
-        "Kulaklık & Mikrofon": ("Kablosuz", "7.1 Surround", "ANC"),
-        "Webcam": ("1080p", "4K", "Otomatik Odaklama"),
-        "Yazıcı & Tarayıcı": ("Lazer", "Tanklı", "Çok Fonksiyonlu"),
-        "Monitör Aksesuarları": ("Monitör Kolu", "VESA", "Işık Barı"),
-        "Ağ Ürünleri": ("Wi-Fi 6", "Wi-Fi 7", "Mesh"),
-    },
-    "Oyuncu Ekipmanları": {
-        "Oyuncu Monitörü": ("144Hz+", "QHD", "OLED"),
-        "Oyuncu Klavyesi": ("Mekanik", "Kablosuz", "TKL"),
-        "Oyuncu Faresi": ("Kablosuz", "8000 DPI+", "Hafif"),
-        "Oyuncu Kulaklığı": ("Kablosuz", "7.1 Surround", "Mikrofonlu"),
-        "Oyuncu Koltuğu": ("Ergonomik", "Ayarlanabilir", "Kumaş"),
-        "Gamepad": ("Kablosuz", "PC", "Konsol"),
-    },
-    "Telefon & Tablet": {
-        "Akıllı Telefon": ("256GB", "OLED", "5G"),
-        "Tablet": ("128GB", "256GB", "Kalem Destekli"),
-        "Akıllı Saat": ("GPS", "LTE", "AMOLED"),
-        "Telefon Aksesuarları": ("Hızlı Şarj", "Kablosuz Şarj", "Powerbank"),
-    },
-    "Konsol & Oyun": {
-        "Oyun Konsolu": ("PlayStation 5", "Xbox Series X", "Nintendo Switch"),
-        "Konsol Oyunları": ("PlayStation", "Xbox", "Nintendo Switch"),
-        "VR Gözlük": ("Meta Quest", "PlayStation VR2", "256GB"),
-        "Gamepad & Aksesuar": ("Kablosuz Gamepad", "Direksiyon Seti", "Şarj İstasyonu"),
-    },
-    "Ev Aletleri": {
-        "Robot Süpürge": ("Lidar", "Otomatik Boşaltma", "Paspaslı"),
-        "Elektrikli Süpürge": ("Dikey", "Kablosuz", "HEPA Filtre"),
-        "Kahve Makinesi": ("Tam Otomatik", "Espresso", "Filtre Kahve"),
-        "Küçük Ev Aletleri": ("Airfryer", "Blender", "Mutfak Robotu"),
-    },
-    "TV & Ses": {
-        "Televizyon": ("55 inç", "65 inç", "OLED"),
-        "Kulaklık": ("Bluetooth", "ANC", "Kablosuz"),
-        "Hoparlör": ("Bluetooth", "Soundbar", "Taşınabilir"),
-        "Projeksiyon": ("Full HD", "4K", "Taşınabilir"),
-    },
-    "Fotoğraf & Kamera": {
-        "Fotoğraf Makinesi": ("Aynasız", "DSLR", "4K Video"),
-        "Aksiyon Kamerası": ("4K", "Su Geçirmez", "Stabilizasyon"),
-        "Güvenlik Kamerası": ("Wi-Fi", "Gece Görüşü", "Dış Mekan"),
-    },
-}
-
-CATEGORY_CATALOG.update({
-    "Beyaz Eşya": dict.fromkeys((
-        "Buzdolabı", "Çamaşır Makinesi", "Kurutma Makinesi", "Bulaşık Makinesi",
-        "Fırın", "Ocak", "Davlumbaz", "Derin Dondurucu", "Klima",
-        "Şofben & Termosifon",
-    ), ()),
-    "Küçük Ev Aletleri": dict.fromkeys((
-        "Robot Süpürge", "Elektrikli Süpürge", "Ütü", "Kahve Makinesi",
-        "Airfryer", "Blender", "Mutfak Robotu", "Tost Makinesi",
-        "Su Arıtma Cihazı", "Vantilatör & Isıtıcı",
-    ), ()),
-    "Ev & Yaşam": dict.fromkeys((
-        "Oturma Grubu", "Yatak Odası", "Masa & Sandalye", "Ev Tekstili",
-        "Aydınlatma", "Halı & Kilim", "Perde", "Dekorasyon",
-        "Banyo Ürünleri", "Bahçe Mobilyası",
-    ), ()),
-    "Mutfak & Sofra": dict.fromkeys((
-        "Tencere & Tava", "Yemek Takımı", "Çatal Kaşık Bıçak", "Bardak & Kupa",
-        "Saklama Kabı", "Mutfak Gereçleri", "Masa Örtüsü", "Su Sebili",
-    ), ()),
-    "Moda & Giyim": dict.fromkeys((
-        "Kadın Giyim", "Erkek Giyim", "Çocuk Giyim", "Mont & Kaban",
-        "Takım Elbise", "İç Giyim", "Pijama", "Çorap",
-    ), ()),
-    "Ayakkabı & Çanta": dict.fromkeys((
-        "Kadın Ayakkabı", "Erkek Ayakkabı", "Spor Ayakkabı", "Çocuk Ayakkabı",
-        "Bot & Çizme", "Sırt Çantası", "El Çantası", "Valiz",
-    ), ()),
-    "Kozmetik & Kişisel Bakım": dict.fromkeys((
-        "Parfüm", "Cilt Bakımı", "Makyaj", "Saç Bakımı", "Tıraş & Epilasyon",
-        "Ağız Bakımı", "Deodorant", "Kişisel Bakım Cihazları",
-    ), ()),
-    "Anne & Bebek": dict.fromkeys((
-        "Bebek Arabası", "Oto Koltuğu", "Bebek Bezi", "Bebek Beslenme",
-        "Bebek Telsizi", "Bebek Odası", "Bebek Bakım & Banyo", "Emzirme Ürünleri",
-    ), ()),
-    "Oyuncak & Hobi": dict.fromkeys((
-        "Eğitici Oyuncak", "Yapı Oyuncağı", "Kutu Oyunu", "Puzzle",
-        "Oyuncak Bebek", "Uzaktan Kumandalı Oyuncak", "Model & Maket",
-        "Koleksiyon", "Hobi Malzemeleri",
-    ), ()),
-    "Kitap, Kırtasiye & Ofis": dict.fromkeys((
-        "Kitap", "E-kitap Okuyucu", "Kırtasiye", "Yazıcı & Tarayıcı",
-        "Kartuş & Toner", "Ofis Mobilyası", "Ofis Aksesuarları", "Okul Çantası",
-    ), ()),
-    "Spor & Outdoor": dict.fromkeys((
-        "Fitness", "Koşu", "Bisiklet", "Kamp", "Outdoor Giyim",
-        "Takım Sporları", "Su Sporları", "Spor Aletleri", "Spor Besinleri",
-    ), ()),
-    "Otomotiv & Motosiklet": dict.fromkeys((
-        "Oto Aksesuarları", "Lastik", "Akü", "Motor Yağı", "Yedek Parça",
-        "Motosiklet Kaskı", "Motosiklet Ekipmanı", "Araç İçi Elektronik",
-        "Oto Bakım & Temizlik",
-    ), ()),
-    "Market & Gıda": dict.fromkeys((
-        "Kahve & Çay", "Atıştırmalık", "İçecek", "Temel Gıda", "Kahvaltılık",
-        "Organik & Diyet Ürünleri", "Ev Temizlik Ürünleri", "Kağıt Ürünleri",
-    ), ()),
-    "Pet Shop": dict.fromkeys((
-        "Kedi Maması", "Köpek Maması", "Kedi Kumu", "Kuş Ürünleri", "Akvaryum",
-        "Pet Oyuncakları", "Pet Bakım & Sağlık",
-    ), ()),
-    "Sağlık & Medikal": dict.fromkeys((
-        "Vitamin & Takviye", "Medikal Cihaz", "Termometre", "Ortopedik Ürün",
-        "İlk Yardım", "Masaj Aleti", "Gözlük & Lens",
-    ), ()),
-    "Takı, Saat & Aksesuar": dict.fromkeys((
-        "Kol Saati", "Takı", "Güneş Gözlüğü", "Cüzdan", "Valiz & Seyahat",
-        "Şemsiye",
-    ), ()),
-    "Müzik & Enstrüman": dict.fromkeys((
-        "Gitar", "Klavye & Piyano", "Davul & Perküsyon", "Mikrofon",
-        "Ses & Stüdyo Ekipmanı", "DJ Ekipmanı", "Enstrüman Aksesuarları",
-    ), ()),
-    "Yapı Market & Bahçe": dict.fromkeys((
-        "El Aletleri", "Elektrikli El Aletleri", "Boya", "Hırdavat",
-        "Bahçe Makineleri", "Sulama", "Yapı Malzemeleri", "Güvenlik & Alarm",
-    ), ()),
-    "Temizlik & Ev Bakımı": dict.fromkeys((
-        "Temizlik Ürünleri", "Hava Temizleyici", "Su Arıtma & Filtre",
-        "Buharlı Temizleyici", "Çamaşır & Kurutma Aksesuarları",
-    ), ()),
-})
-
-MONITOR_FILTERS = {
-    "refresh_rate": (
-        ALL_FILTERS,
-        "60Hz",
-        "75Hz",
-        "100Hz",
-        "120Hz",
-        "144Hz",
-        "165Hz",
-        "170Hz",
-        "180Hz",
-        "200Hz",
-        "240Hz",
-        "280Hz",
-        "360Hz",
-        "500Hz+",
-    ),
-    "resolution": (
-        ALL_FILTERS,
-        "HD (720p)",
-        "FHD (1080p)",
-        "QHD / 2K (1440p)",
-        "UW-QHD (Ultrawide 1440p)",
-        "UHD / 4K (2160p)",
-        "8K",
-    ),
-    "panel_type": (
-        ALL_FILTERS,
-        "IPS",
-        "Fast IPS",
-        "VA",
-        "OLED",
-        "QD-OLED",
-        "TN",
-        "Mini-LED",
-    ),
-}
-
-NON_PRODUCT_PRICE_CONTEXT = re.compile(
-    r"kargo|kupon|taksit|aylık|ayda|bedava|puan|kazanç|tasarruf|sepette|"
-    r"shipping|coupon|installment|per month|monthly|free delivery",
-    re.IGNORECASE,
-)
-RESULT_CARD_TITLE_SELECTORS = (
-    "h2",
-    "h3",
-    ".product-title",
-    ".title",
-    ".name",
-    '[data-testid*="title"]',
-)
-FALLBACK_RESULT_CARD_SELECTORS = (
-    "article",
-    "li[class*='product']",
-    "div[class*='product']",
-    "[data-testid*='product']",
-    "[data-test-id*='product']",
-    "[data-productid]",
-)
-FALLBACK_PRICE_SELECTORS = (
-    '[class*="price"]',
-    '[class*="fiyat"]',
-    '[data-testid*="price"]',
-    '[data-test-id*="price"]',
-    '[itemprop="price"]',
-)
+STORES = [
+    ("Amazon Türkiye", "https://www.amazon.com.tr/s?k={query}"),
+    ("Hepsiburada", "https://www.hepsiburada.com/ara?q={query}"),
+    ("Trendyol", "https://www.trendyol.com/sr?q={query}"),
+    ("n11", "https://www.n11.com/arama?q={query}"),
+]
 
 
-def _ensure_database():
-    database.initialize(
-        {
-            "products": PRODUCTS_FILE,
-            "radars": RADARS_FILE,
-            "offers": OFFERS_FILE,
-        }
-    )
-    database.seed_catalog(
-        PRODUCTS_DB_FILE,
-        CATEGORY_CATALOG,
-        stores=STORE_CONFIGS,
-    )
-
-
-def load_products():
-    with PRODUCTS_LOCK:
-        _ensure_database()
-        products = database.load_records("products")
-        if not isinstance(products, list):
-            raise RuntimeError("products veritabanı kaydı bir liste olmalıdır.")
-        for product in products:
-            if (
-                not isinstance(product, dict)
-                or not isinstance(product.get("id"), str)
-                or not _valid_product_url(product.get("url"))
-            ):
-                raise RuntimeError("products veritabanında geçersiz ürün var.")
-            try:
-                target = float(product.get("target"))
-            except (TypeError, ValueError, OverflowError) as error:
-                raise RuntimeError(
-                    "products veritabanında geçersiz hedef fiyat var."
-                ) from error
-            if not math.isfinite(target) or target <= 0:
-                raise RuntimeError(
-                    "products veritabanında geçersiz hedef fiyat var."
-                )
-        return products
-
-
-def save_products(products):
-    with PRODUCTS_LOCK:
-        _ensure_database()
-        database.save_records("products", products)
-
-
-def _price_from_token(token):
-    match = PRICE_TOKEN.search(token)
-    if not match:
-        return None
-    token = match.group()
-    token = re.sub(r"\s+", "", token.replace("\u00a0", " "))
-    if "," in token and "." in token:
-        decimal_separator = "," if token.rfind(",") > token.rfind(".") else "."
-        grouping_separator = "." if decimal_separator == "," else ","
-        token = token.replace(grouping_separator, "")
-        token = token.replace(decimal_separator, ".")
-    elif "," in token or "." in token:
-        separator = "," if "," in token else "."
-        whole, fraction = token.rsplit(separator, 1)
-        if len(fraction) in (1, 2):
-            token = whole.replace(",", "").replace(".", "") + "." + fraction
-        else:
-            token = token.replace(",", "").replace(".", "")
-
+@contextmanager
+def connect() -> Iterator[sqlite3.Connection]:
+    connection = sqlite3.connect(DATABASE, timeout=5)
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
     try:
-        price = Decimal(token)
-    except InvalidOperation:
-        return None
-    if not price.is_finite() or price <= 0:
-        return None
-    return float(price)
-
-
-def parse_price(text, allow_bare=False):
-    normalized = unescape(text).replace("\u00a0", " ").strip()
-    if not normalized or NON_PRODUCT_PRICE_CONTEXT.search(normalized):
-        return None
-
-    currency_matches = list(PRICE_WITH_CURRENCY.finditer(normalized))
-    if currency_matches:
-        return _price_from_token(currency_matches[-1].group())
-    if allow_bare and re.fullmatch(r"[\d.,\s]+", normalized):
-        match = PRICE_TOKEN.fullmatch(normalized)
-        if match:
-            return _price_from_token(match.group())
-    return None
-
-
-def _prices_from_element_text(text, allow_bare=False):
-    prices = []
-    for line in text.splitlines():
-        candidate = line.strip()
-        if not candidate or NON_PRODUCT_PRICE_CONTEXT.search(candidate):
-            continue
-        if allow_bare:
-            price = parse_price(candidate, allow_bare=True)
-            if price is not None:
-                prices.append(price)
-                continue
-        for match in PRICE_WITH_CURRENCY.finditer(candidate):
-            price = _price_from_token(match.group())
-            if price is not None:
-                prices.append(price)
-    return prices
-
-
-def extract_price(soup, store=None):
-    selectors = list(PRODUCT_SELECTORS)
-    if store in STORE_CONFIGS:
-        selectors = list(STORE_CONFIGS[store]["prices"]) + selectors
-    selectors.append('meta[itemprop="price"]')
-    seen = set()
-    for selector in selectors:
-        if selector in seen:
-            continue
-        seen.add(selector)
-        for element in soup.select(selector)[:6]:
-            if selector == 'meta[itemprop="price"]':
-                price = parse_price(element.get("content", ""), allow_bare=True)
-                if price is not None:
-                    return price
-            text = element.get_text("\n", strip=True)
-            prices = _prices_from_element_text(
-                text,
-                allow_bare=selector in STORE_CONFIGS.get(store, {}).get("prices", ()),
-            )
-            if prices:
-                return prices[-1]
-    return None
-
-
-def _http_image_url(value, page_url):
-    if not value:
-        return None
-    candidates = value.strip().split(",", 1)[0].split()
-    if not candidates:
-        return None
-    image_candidate = candidates[0]
-    if image_candidate.startswith("data:"):
-        return None
-    image_url = urljoin(page_url, image_candidate)
-    parsed_image = urlsplit(image_url)
-    if parsed_image.scheme in ("http", "https") and parsed_image.netloc:
-        return image_url
-    return None
-
-
-def _image_url_from_element(image, page_url):
-    for attribute in ("data-src", "data-lazy-src", "data-original", "src", "data-srcset", "srcset"):
-        value = image.get(attribute)
-        image_url = _http_image_url(value, page_url)
-        if image_url:
-            return image_url
-    return None
-
-
-def _image_url_from_card(card, page_url):
-    for image in card.select("img")[:5]:
-        image_url = _image_url_from_element(image, page_url)
-        if image_url:
-            return image_url
-    return None
-
-
-def _product_image_url(soup, page_url):
-    for selector in (
-        'meta[property="og:image"]',
-        'meta[name="twitter:image"]',
-        '[data-testid*="image"] img',
-        "main img",
-        "img",
-    ):
-        for image in soup.select(selector)[:8]:
-            if selector.startswith("meta["):
-                image_url = _http_image_url(image.get("content"), page_url)
-                if image_url:
-                    return image_url
-                continue
-            image_url = _image_url_from_element(image, page_url)
-            if image_url:
-                return image_url
-    return None
-
-
-def _jsonld_products_from_page(soup, store, search_url):
-    products = []
-    seen_urls = set()
-    scripts = soup.select('script[type="application/ld+json"]')[:10]
-
-    def visit(value):
-        if isinstance(value, list):
-            for entry in value:
-                visit(entry)
-            return
-        if not isinstance(value, dict):
-            return
-
-        graph = value.get("@graph")
-        if graph is not None:
-            visit(graph)
-        item_type = value.get("@type", [])
-        if isinstance(item_type, str):
-            item_type = [item_type]
-        elif not isinstance(item_type, list):
-            item_type = []
-        normalized_types = {
-            entry.rsplit("/", 1)[-1]
-            for entry in item_type
-            if isinstance(entry, str)
-        }
-        if "Product" in normalized_types:
-            offers = value.get("offers", {})
-            if isinstance(offers, list):
-                offers = next(
-                    (entry for entry in offers if isinstance(entry, dict)), {}
-                )
-            if not isinstance(offers, dict):
-                offers = {}
-            price = parse_price(
-                str(offers.get("price") or offers.get("lowPrice") or ""),
-                allow_bare=True,
-            )
-            title = value.get("name")
-            href = value.get("url") or offers.get("url")
-            product_url = urljoin(search_url, href or "")
-            parsed_url = urlsplit(product_url)
-            image = value.get("image")
-            if isinstance(image, list):
-                image = next((entry for entry in image if isinstance(entry, str)), None)
-            if isinstance(image, dict):
-                image = image.get("url") or image.get("contentUrl")
-            if (
-                isinstance(title, str)
-                and title.strip()
-                and isinstance(href, str)
-                and href.strip()
-                and price is not None
-                and _host_matches(
-                    parsed_url.hostname or "",
-                    STORE_CONFIGS[store]["domain"],
-                )
-                and product_url not in seen_urls
-            ):
-                seen_urls.add(product_url)
-                products.append(
-                    {
-                        "title": title.strip(),
-                        "description": title.strip(),
-                        "url": product_url,
-                        "price": price,
-                        "store": store,
-                        "image_url": _http_image_url(image, search_url),
-                    }
-                )
-        for key in ("itemListElement", "item", "mainEntity"):
-            if key in value:
-                visit(value[key])
-        item = value.get("item")
-        if isinstance(item, dict):
-            visit(item)
-
-    for script in scripts:
-        try:
-            parsed_json = json.loads(script.string or script.get_text())
-        except JSONDecodeError:
-            continue
-        visit(parsed_json)
-    return products
-
-
-def check_price(url, target_price):
-    print(f"\nÜrün kontrol ediliyor: {url}", flush=True)
-    hostname = (urlsplit(url).hostname or "").lower()
-    store = next(
-        (name for name, config in STORE_CONFIGS.items() if config["domain"] in hostname),
-        None,
-    )
-    try:
-        with httpx.Client(
-            headers=HTTP_HEADERS,
-            timeout=HTTP_TIMEOUT_SECONDS,
-            follow_redirects=True,
-        ) as client:
-            response = client.get(url)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, "html.parser")
-            current_price = extract_price(soup, store)
-            image_url = _product_image_url(soup, str(response.url))
-    except Exception as error:
-        message = f"Fiyat kontrolü başarısız: {error}"
-        print(f"❌ {message}", flush=True)
-        return {
-            "current_price": None,
-            "last_price_label": None,
-            "image_url": None,
-            "message": message,
-        }
-
-    if current_price is None:
-        message = "Sayfada okunabilir bir ürün fiyatı bulunamadı."
-        print(f"⚠️ {message}", flush=True)
-        return {
-            "current_price": None,
-            "last_price_label": None,
-            "image_url": None,
-            "message": message,
-        }
-
-    message = "Hedef yakalandı." if current_price <= target_price else "Henüz hedef fiyata düşmedi."
-    current_display = format_price(current_price)
-    target_display = format_price(target_price)
-    print(f"Son Kontrol Edilen Güncel Fiyat: {current_display} TL", flush=True)
-    print(f"Hedef fiyat: {target_display} TL", flush=True)
-    print(message, flush=True)
-    return {
-        "current_price": current_price,
-        "last_price_label": f"Son Kontrol Edilen Güncel Fiyat: {current_display} TL",
-        "image_url": image_url,
-        "message": message,
-    }
-
-
-def format_price(price):
-    formatted = f"{price:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    return formatted[:-3] if formatted.endswith(",00") else formatted
-
-
-def _host_matches(hostname, domain):
-    normalized_host = hostname.lower().rstrip(".")
-    normalized_domain = domain.lower().rstrip(".")
-    return normalized_host == normalized_domain or normalized_host.endswith(
-        f".{normalized_domain}"
-    )
-
-
-def _append_price_history(entry, price, recorded_at=None):
-    history = entry.get("price_history")
-    if not isinstance(history, list):
-        history = []
-    timestamp = recorded_at or datetime.now().astimezone().isoformat(timespec="minutes")
-    try:
-        observed_at = datetime.fromisoformat(
-            str(timestamp).replace("Z", "+00:00")
-        ).strftime("%Y-%m-%d %H:%M")
-    except ValueError:
-        observed_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M")
-    history.append({"date": observed_at, "price": float(price)})
-    return history
-
-
-def _detect_shock_drop(previous_offer, current_price, radar, checked_at):
-    history = previous_offer.get("price_history")
-    previous_price = None
-    if isinstance(history, list) and history:
-        last_point = history[-1]
-        if isinstance(last_point, dict):
-            try:
-                previous_price = float(last_point.get("price"))
-            except (TypeError, ValueError, OverflowError):
-                previous_price = None
-    if previous_price is None:
-        try:
-            previous_price = float(previous_offer.get("price"))
-        except (TypeError, ValueError, OverflowError):
-            return None
-
-    mode = radar.get("shock_mode", "none")
-    try:
-        threshold = float(radar.get("shock_threshold", 0))
-    except (TypeError, ValueError, OverflowError):
-        return None
-    if (
-        mode not in ("amount", "percent")
-        or not math.isfinite(threshold)
-        or threshold <= 0
-        or previous_price <= 0
-        or current_price >= previous_price
-    ):
-        return None
-
-    decrease = previous_price - current_price
-    decrease_percent = decrease / previous_price * 100
-    reached = decrease >= threshold if mode == "amount" else decrease_percent >= threshold
-    if not reached:
-        return None
-    return {
-        "timestamp": checked_at,
-        "previous_price": previous_price,
-        "current_price": float(current_price),
-        "decrease": decrease,
-        "decrease_percent": decrease_percent,
-        "mode": mode,
-        "threshold": threshold,
-    }
-
-
-def check_products():
-    if not CHECK_LOCK.acquire(blocking=False):
-        print("Fiyat kontrolü zaten sürüyor; yeni istek atlandı.", flush=True)
-        return None
-
-    results = []
-    try:
-        products = load_products()
-        for product in products:
-            result = check_price(product["url"], float(product["target"]))
-            checked_at = datetime.now().astimezone().isoformat(timespec="milliseconds")
-            checked_product = {
-                **product,
-                **result,
-                "last_checked": checked_at,
-            }
-            if not result.get("image_url"):
-                checked_product["image_url"] = product.get("image_url")
-            if result["current_price"] is not None:
-                checked_product["price_history"] = _append_price_history(
-                    product,
-                    result["current_price"],
-                    checked_at,
-                )
-            results.append(checked_product)
-
-            with PRODUCTS_LOCK:
-                latest_products = load_products()
-                for index, latest in enumerate(latest_products):
-                    if latest["id"] == product["id"]:
-                        latest_products[index] = checked_product
-                        break
-                save_products(latest_products)
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
     finally:
-        CHECK_LOCK.release()
-    return results
+        connection.close()
 
 
-def check_catalog_prices():
-    if not CATALOG_REFRESH_LOCK.acquire(blocking=False):
-        print("Katalog fiyat güncellemesi zaten sürüyor; yeni istek atlandı.", flush=True)
-        return None
-
-    try:
-        offers = load_offers()
-        refreshable = [
-            offer
-            for offer in offers
-            if isinstance(offer, dict)
-            and _valid_product_url(offer.get("url"))
-            and isinstance(offer.get("price"), (int, float))
-        ]
-        updated_by_id = {}
-        with ThreadPoolExecutor(
-            max_workers=min(MAX_CONCURRENT_REQUESTS, len(refreshable) or 1)
-        ) as executor:
-            futures = {
-                executor.submit(
-                    check_price,
-                    offer["url"],
-                    float(offer["price"]),
-                ): offer
-                for offer in refreshable
-            }
-            for future in as_completed(futures):
-                offer = futures[future]
-                result = future.result()
-                current_price = result.get("current_price")
-                if not isinstance(current_price, (int, float)):
-                    print(
-                        f"[WARN] Katalog fiyatı güncellenemedi "
-                        f"({offer.get('store')}): {result.get('message')}",
-                        flush=True,
-                    )
-                    continue
-                checked_at = datetime.now().astimezone().isoformat(
-                    timespec="milliseconds"
-                )
-                updated = {**offer, **result, "last_seen": checked_at}
-                if not result.get("image_url"):
-                    updated["image_url"] = offer.get("image_url")
-                if offer.get("min_price") is not None and offer.get("max_price") is not None:
-                    updated["active"] = (
-                        float(offer["min_price"])
-                        <= current_price
-                        <= float(offer["max_price"])
-                    )
-                updated["price_history"] = _append_price_history(
-                    offer,
-                    current_price,
-                    checked_at,
-                )
-                updated_by_id[offer["id"]] = updated
-
-        if not updated_by_id:
-            return 0
-        updated_offers = [
-            updated_by_id.get(offer["id"], offer)
-            for offer in offers
-        ]
-        _save_json_list(OFFERS_FILE, updated_offers, OFFERS_LOCK)
-        print(
-            f"Katalog fiyatları güncellendi: {len(updated_by_id)} ürün.",
-            flush=True,
+def initialize_database() -> None:
+    with connect() as db:
+        db.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS categories (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                icon TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS products (
+                id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                category TEXT NOT NULL REFERENCES categories(id),
+                brand TEXT NOT NULL,
+                current_lowest_price REAL NOT NULL,
+                old_price REAL NOT NULL,
+                lowest_store_name TEXT NOT NULL,
+                image_url TEXT NOT NULL,
+                description TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS store_prices (
+                id INTEGER PRIMARY KEY,
+                product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+                store_name TEXT NOT NULL,
+                price REAL NOT NULL,
+                product_url TEXT NOT NULL,
+                UNIQUE(product_id, store_name)
+            );
+            CREATE TABLE IF NOT EXISTS price_history (
+                id INTEGER PRIMARY KEY,
+                product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+                recorded_on TEXT NOT NULL,
+                price REAL NOT NULL,
+                UNIQUE(product_id, recorded_on)
+            );
+            CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+            CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand);
+            CREATE INDEX IF NOT EXISTS idx_products_price ON products(current_lowest_price);
+            CREATE INDEX IF NOT EXISTS idx_store_prices_store ON store_prices(store_name);
+            CREATE INDEX IF NOT EXISTS idx_price_history_product_date
+                ON price_history(product_id, recorded_on);
+            """
         )
-        return len(updated_by_id)
-    finally:
-        CATALOG_REFRESH_LOCK.release()
-
-
-def _persist_offer_sync(offer_id, result):
-    with OFFERS_LOCK:
-        offers = load_offers()
-        index = next(
-            (i for i, item in enumerate(offers) if item.get("id") == offer_id),
-            None,
+        db.executemany(
+            "INSERT OR IGNORE INTO categories (id, name, icon) VALUES (?, ?, ?)",
+            CATEGORY_DATA,
         )
-        if index is None:
-            return False
-        offer = offers[index]
-        try:
-            old_price = float(offer.get("price"))
-            current_price = float(result["current_price"])
-        except (KeyError, TypeError, ValueError, OverflowError):
-            return False
-        if (
-            not math.isfinite(old_price)
-            or old_price <= 0
-            or not math.isfinite(current_price)
-            or current_price <= 0
-            or math.isclose(old_price, current_price, rel_tol=0, abs_tol=0.005)
-        ):
-            return False
-        checked_at = datetime.now().astimezone().isoformat(timespec="milliseconds")
-        updated = {
-            **offer,
-            "previous_price": old_price,
-            "price": current_price,
-            "last_seen": checked_at,
-            "price_history": _append_price_history(
-                offer,
-                current_price,
-                checked_at,
-            ),
-        }
-        try:
-            minimum_price = float(offer.get("min_price", 0))
-            maximum_price = float(offer.get("max_price"))
-        except (TypeError, ValueError, OverflowError):
-            minimum_price = maximum_price = math.nan
-        if math.isfinite(minimum_price) and math.isfinite(maximum_price):
-            updated["active"] = minimum_price <= current_price <= maximum_price
-        if result.get("image_url"):
-            updated["image_url"] = result["image_url"]
-        offers[index] = updated
-        _save_json_list(OFFERS_FILE, offers, OFFERS_LOCK)
-        return True
-
-
-async def _refresh_offer_price(offer_id):
-    try:
-        offers = await asyncio.to_thread(load_offers)
-        offer = next(
-            (item for item in offers if item.get("id") == offer_id),
-            None,
-        )
-        if offer is None or not _valid_product_url(offer.get("url")):
+        if db.execute("SELECT COUNT(*) FROM products").fetchone()[0]:
             return
-        result = await asyncio.to_thread(
-            check_price,
-            offer["url"],
-            float(offer["price"]),
-        )
-        if not isinstance(result.get("current_price"), (int, float)):
-            message = str(result.get("message") or "Mağazadan fiyat okunamadı.")
-            with OFFER_SYNC_LOCK:
-                OFFER_SYNC_ERRORS[offer_id] = message
-            print(
-                f"[WARN] Ürün detay fiyatı güncellenemedi "
-                f"({offer.get('store')}): {message}",
-                flush=True,
-            )
-            return
-        changed = await asyncio.to_thread(
-            _persist_offer_sync,
-            offer_id,
-            result,
-        )
-        if changed:
-            print(f"Ürün fiyatı arka planda güncellendi: {offer_id}", flush=True)
-    except Exception as error:
-        with OFFER_SYNC_LOCK:
-            OFFER_SYNC_ERRORS[offer_id] = str(error)
-        print(f"❌ Ürün fiyatı arka planda güncellenemedi: {error}", flush=True)
-    finally:
-        with OFFER_SYNC_LOCK:
-            OFFER_SYNCING.discard(offer_id)
 
-
-def _schedule_offer_sync(offer_id):
-    with OFFER_SYNC_LOCK:
-        if offer_id in OFFER_SYNCING:
-            return
-        OFFER_SYNC_ERRORS.pop(offer_id, None)
-        OFFER_SYNCING.add(offer_id)
-        task = asyncio.create_task(_refresh_offer_price(offer_id))
-        OFFER_SYNC_TASKS.add(task)
-        task.add_done_callback(OFFER_SYNC_TASKS.discard)
-
-
-def _load_json_list(path, lock):
-    with lock:
-        _ensure_database()
-        collection = {
-            RADARS_FILE: "radars",
-            OFFERS_FILE: "offers",
-        }.get(path)
-        if collection is None:
-            raise RuntimeError(f"{path.name} için veritabanı koleksiyonu bulunamadı.")
-        data = database.load_records(collection)
-        if not isinstance(data, list):
-            raise RuntimeError(f"{collection} veritabanı kaydı bir liste olmalıdır.")
-        return data
-
-
-def _save_json_list(path, entries, lock):
-    with lock:
-        _ensure_database()
-        collection = {
-            RADARS_FILE: "radars",
-            OFFERS_FILE: "offers",
-        }.get(path)
-        if collection is None:
-            raise RuntimeError(f"{path.name} için veritabanı koleksiyonu bulunamadı.")
-        database.save_records(collection, entries)
-        if path == OFFERS_FILE:
-            with PRODUCT_DATABASE_LOCK:
-                PRODUCT_DATABASE[:] = deepcopy(entries)
-
-
-def load_radars():
-    radars = _load_json_list(RADARS_FILE, RADARS_LOCK)
-    for radar in radars:
-        if not isinstance(radar, dict) or not isinstance(radar.get("id"), str):
-            raise RuntimeError(f"{RADARS_FILE.name} geçersiz bir radar içeriyor.")
-        if not isinstance(radar.get("query"), str):
-            raise RuntimeError(f"{RADARS_FILE.name} geçersiz bir arama içeriyor.")
-        stores = radar.get("stores")
-        if stores is not None:
-            if (
-                not isinstance(stores, list)
-                or not stores
-                or any(
-                    not isinstance(store, str) or store not in STORE_CONFIGS
-                    for store in stores
-                )
-                or len(set(stores)) != len(stores)
-            ):
-                raise RuntimeError(f"{RADARS_FILE.name} geçersiz mağaza seçimi içeriyor.")
-        elif radar.get("store") not in (*STORE_CONFIGS, ALL_STORES):
-            raise RuntimeError(f"{RADARS_FILE.name} geçersiz mağaza içeriyor.")
-        try:
-            budget = float(radar.get("max_price"))
-        except (TypeError, ValueError, OverflowError) as error:
-            raise RuntimeError(f"{RADARS_FILE.name} geçersiz bütçe içeriyor.") from error
-        if not math.isfinite(budget) or budget <= 0:
-            raise RuntimeError(f"{RADARS_FILE.name} geçersiz bütçe içeriyor.")
-        try:
-            min_price = float(radar.get("min_price", 0))
-        except (TypeError, ValueError, OverflowError) as error:
-            raise RuntimeError(f"{RADARS_FILE.name} geçersiz minimum fiyat içeriyor.") from error
-        if not math.isfinite(min_price) or min_price < 0 or min_price > budget:
-            raise RuntimeError(f"{RADARS_FILE.name} geçersiz fiyat aralığı içeriyor.")
-        scan_depth = radar.get("scan_depth", DEFAULT_SCAN_DEPTH)
-        if (
-            not isinstance(scan_depth, int)
-            or isinstance(scan_depth, bool)
-            or not 1 <= scan_depth <= MAX_SCAN_DEPTH
+        today = date.today()
+        for product_id, (category, title, brand, base_price, description) in enumerate(
+            PRODUCT_DATA, start=1
         ):
-            raise RuntimeError(f"{RADARS_FILE.name} geçersiz tarama derinliği içeriyor.")
-    return radars
-
-
-def load_offers():
-    offers = _load_json_list(OFFERS_FILE, OFFERS_LOCK)
-    changed = False
-    for offer in offers:
-        if not isinstance(offer, dict):
-            continue
-        is_discounted = isinstance(offer.get("shock_alert"), dict)
-        if offer.get("is_discounted") != is_discounted:
-            offer["is_discounted"] = is_discounted
-            changed = True
-    if changed:
-        _save_json_list(OFFERS_FILE, offers, OFFERS_LOCK)
-    else:
-        with PRODUCT_DATABASE_LOCK:
-            PRODUCT_DATABASE[:] = deepcopy(offers)
-    return offers
-
-
-def _price_from_card(card, store):
-    prices = []
-    selectors = (
-        tuple(STORE_CONFIGS[store]["prices"])
-        + FALLBACK_PRICE_SELECTORS
-        + ("span", "div")
-    )
-    for selector in dict.fromkeys(selectors):
-        for element in card.select(selector)[:50]:
-            text = element.get_text("\n", strip=True)
-            if text:
-                prices.extend(
-                    _prices_from_element_text(
-                        text,
-                        allow_bare=selector in STORE_CONFIGS[store]["prices"],
-                    )
-                )
-            if not text:
-                price = parse_price(element.get("content", ""), allow_bare=True)
-                if price is not None:
-                    prices.append(price)
-        if prices:
-            return prices[-1]
-    prices = _prices_from_element_text(card.get_text("\n", strip=True))
-    if prices:
-        return prices[0]
-    return None
-
-
-def _product_from_card(card, store, search_url):
-    title = ""
-    link = None
-    for selector in RESULT_CARD_TITLE_SELECTORS:
-        heading = card.select_one(selector)
-        if heading:
-            title = (
-                heading.get_text(" ", strip=True)
-                or heading.get("title")
-                or heading.get("aria-label")
-                or heading.get("alt")
-                or ""
-            ).strip()
-            link = heading if heading.name == "a" else heading.select_one("a")
-            break
-    if link is None:
-        if card.name == "a":
-            link = card
-        else:
-            link = (
-                card.select_one('a[href*="/dp/"]')
-                or card.select_one("a[href][title]")
-                or card.select_one("a[href][aria-label]")
-                or card.select_one("a[href]")
+            low_store_index = product_id % len(STORES)
+            low_price = round(base_price * (0.94 + (product_id % 8) * 0.008), 2)
+            old_price = round(low_price * (1.08 + (product_id % 5) * 0.012), 2)
+            image_url = (
+                "https://placehold.co/640x480/171a21/f2f2f2"
+                f"?text={quote_plus(title[:36])}"
             )
-    href = link.get("href") if link else None
-    if not title and link:
-        title = (
-            link.get_text(" ", strip=True)
-            or link.get("title")
-            or link.get("aria-label")
-            or ""
-        ).strip()
-        if not title:
-            image = link.select_one("img[alt]")
-            title = image.get("alt", "").strip() if image else ""
-
-    product_url = urljoin(search_url, href or "")
-    parsed_url = urlsplit(product_url)
-    if store == "Amazon" and "/sspa/click" in parsed_url.path:
-        wrapped_url = parse_qs(parsed_url.query).get("url", [])
-        if wrapped_url:
-            product_url = urljoin(search_url, wrapped_url[0])
-            parsed_url = urlsplit(product_url)
-    expected_domain = STORE_CONFIGS[store]["domain"]
-    if (
-        not title
-        or not href
-        or parsed_url.scheme not in ("http", "https")
-        or not _host_matches(parsed_url.hostname or "", expected_domain)
-    ):
-        return None
-    price = _price_from_card(card, store)
-    if price is None:
-        return None
-    description = card.get_text(" ", strip=True) or title
-    image_url = _image_url_from_card(card, search_url)
-    return {
-        "title": title,
-        "description": description,
-        "url": product_url,
-        "price": price,
-        "store": store,
-        "image_url": image_url,
-    }
-
-
-def _search_query_for_store(radar, store):
-    query = str(radar.get("query", "")).strip()
-    if store == "İtopya":
-        if radar.get("subcategory") == "Monitör":
-            query = "monitor"
-        query = query.translate(str.maketrans({"ı": "i", "İ": "I"}))
-        query = unicodedata.normalize("NFKD", query).encode("ascii", "ignore").decode("ascii")
-        query = re.sub(r"[^a-zA-Z0-9\s]", " ", query)
-    return re.sub(r"\s+", " ", query).strip()
-
-
-def _search_page_url(search_url, page_param, page_number):
-    if page_number <= 1:
-        return search_url
-    parts = urlsplit(search_url)
-    query = parse_qs(parts.query, keep_blank_values=True)
-    query[page_param] = [str(page_number)]
-    return urlunsplit(
-        (parts.scheme, parts.netloc, parts.path, urlencode(query, doseq=True), parts.fragment)
-    )
-
-
-def _search_radar(radar):
-    store = radar["store"]
-    if not isinstance(store, str) or store not in STORE_CONFIGS:
-        return [], f"Geçersiz mağaza seçimi: {store!r}."
-    try:
-        selected_stores = _selected_stores(radar)
-    except ValueError as error:
-        return [], str(error)
-    if store not in selected_stores:
-        return [], f"{store} seçili mağaza listesinde bulunmuyor."
-    config = STORE_CONFIGS[store]
-    search_query = _search_query_for_store(radar, store)
-    search_url = config["search_url"].format(
-        query=quote_plus(search_query),
-        query_path=quote(search_query, safe=""),
-    )
-    try:
-        scan_depth = min(
-            max(int(radar.get("scan_depth", DEFAULT_SCAN_DEPTH)), 1),
-            MAX_SCAN_DEPTH,
-        )
-    except (TypeError, ValueError, OverflowError):
-        scan_depth = DEFAULT_SCAN_DEPTH
-    try:
-        store_deadline = time.monotonic() + STORE_SCAN_TIMEOUT_SECONDS
-        products = []
-        seen_urls = set()
-        errors = []
-        challenge_markers = (
-            "cloudflare",
-            "captcha",
-            "security verification",
-            "performing security verification",
-            "attention required",
-            "access denied",
-            "erişim engellendi",
-        )
-        with httpx.Client(
-            headers=HTTP_HEADERS,
-            timeout=HTTP_TIMEOUT_SECONDS,
-            follow_redirects=True,
-        ) as client:
-            for page_number in range(1, scan_depth + 1):
-                remaining_seconds = store_deadline - time.monotonic()
-                if remaining_seconds <= 0:
-                    errors.append(
-                        f"{store} taraması {STORE_SCAN_TIMEOUT_SECONDS} saniyelik "
-                        "mağaza süresini aştı."
-                    )
-                    break
-                page_url = _search_page_url(
-                    search_url,
-                    config["page_param"],
-                    page_number,
-                )
-                try:
-                    response = client.get(
-                        page_url,
-                        timeout=min(HTTP_TIMEOUT_SECONDS, remaining_seconds),
-                    )
-                    response.raise_for_status()
-                except httpx.HTTPStatusError as error:
-                    errors.append(
-                        f"{store} araması HTTP {error.response.status_code} "
-                        f"yanıtı verdi (sayfa {page_number})."
-                    )
-                    if page_number == 1:
-                        break
-                    continue
-                except httpx.HTTPError as error:
-                    errors.append(
-                        f"{store} sayfa {page_number} alınamadı: {error}"
-                    )
-                    break
-
-                soup = BeautifulSoup(response.text, "html.parser")
-                cards = []
-                for selector in (*config["cards"], *FALLBACK_RESULT_CARD_SELECTORS):
-                    cards = soup.select(selector)
-                    if cards:
-                        break
-                page_url = str(response.url)
-                if not cards:
-                    jsonld_products = _jsonld_products_from_page(
-                        soup,
-                        store,
-                        page_url,
-                    )
-                    for product in jsonld_products:
-                        parsed_url = urlsplit(product["url"])
-                        product_identity = urlunsplit(
-                            (
-                                parsed_url.scheme.lower(),
-                                parsed_url.netloc.lower(),
-                                parsed_url.path.rstrip("/"),
-                                "",
-                                "",
-                            )
-                        )
-                        if product_identity not in seen_urls:
-                            seen_urls.add(product_identity)
-                            products.append(product)
-                    if jsonld_products:
-                        break
-                    title = soup.title.get_text(" ", strip=True).lower() if soup.title else ""
-                    body = soup.body.get_text(" ", strip=True).lower() if soup.body else ""
-                    if any(word in title + body[:1200] for word in challenge_markers):
-                        errors.append(
-                            f"{store} otomatik aramaya güvenlik doğrulaması uyguladı."
-                        )
-                    elif page_number == 1:
-                        errors.append(
-                            f"{store} arama sayfasında ürün kartı bulunamadı."
-                        )
-                    break
-
-                parsed_count = 0
-                for card in cards[:10]:
-                    if time.monotonic() >= store_deadline:
-                        break
-                    product = _product_from_card(card, store, page_url)
-                    if product:
-                        parsed_count += 1
-                        parsed_product_url = urlsplit(product["url"])
-                        product_identity = urlunsplit(
-                            (
-                                parsed_product_url.scheme.lower(),
-                                parsed_product_url.netloc.lower(),
-                                parsed_product_url.path.rstrip("/"),
-                                "",
-                                "",
-                            )
-                        )
-                        if product_identity not in seen_urls:
-                            seen_urls.add(product_identity)
-                            products.append(product)
-                for product in _jsonld_products_from_page(soup, store, page_url):
-                    parsed_product_url = urlsplit(product["url"])
-                    product_identity = urlunsplit(
-                        (
-                            parsed_product_url.scheme.lower(),
-                            parsed_product_url.netloc.lower(),
-                            parsed_product_url.path.rstrip("/"),
-                            "",
-                            "",
-                        )
-                    )
-                    if product_identity not in seen_urls:
-                        seen_urls.add(product_identity)
-                        products.append(product)
-                if cards and not parsed_count:
-                    errors.append(
-                        f"{store} sayfa {page_number}: ürün kartları bulundu ancak "
-                        "başlık, mağaza bağlantısı veya fiyat çıkarılamadı."
-                    )
-        print(f"[LOG] {store}: {len(products)} ürün", flush=True)
-        for message in errors:
-            print(f"[WARN] {message}", flush=True)
-        return products, " ".join(errors) or None
-    except Exception as error:
-        message = f"{store} araması başarısız: {error}"
-        print(f"❌ {message}", flush=True)
-        return [], message
-
-
-def _selected_stores(radar):
-    stores = radar.get("stores")
-    if isinstance(stores, list):
-        if any(not isinstance(store, str) or store not in STORE_CONFIGS for store in stores):
-            raise ValueError("Radar geçersiz mağaza içeriyor.")
-        return list(dict.fromkeys(stores))
-    legacy_store = radar.get("store")
-    if legacy_store == ALL_STORES:
-        return list(STORE_CONFIGS)
-    if legacy_store not in STORE_CONFIGS:
-        raise ValueError("Radar geçersiz mağaza içeriyor.")
-    return [legacy_store]
-
-
-def _products_from_selected_stores(products, selected_stores):
-    allowed_stores = frozenset(selected_stores)
-    return [
-        product
-        for product in products
-        if isinstance(product, dict)
-        and isinstance(product.get("store"), str)
-        and product.get("store") in allowed_stores
-    ]
-
-
-def _begin_scan_progress(radar, stores):
-    global SCAN_PROGRESS
-    with SCAN_PROGRESS_LOCK:
-        SCAN_PROGRESS = {
-            "active": True,
-            "radar_id": radar["id"],
-            "query": radar.get("query", ""),
-            "min_price": float(radar.get("min_price", 0)),
-            "max_price": float(radar.get("max_price", 0)),
-            "selected_filters": _selected_filter_map(radar),
-            "completed_stores": [],
-            "pending_stores": list(stores),
-            "products": [],
-        }
-
-
-def _record_scan_store_result(radar, store, products, error):
-    global SCAN_PROGRESS
-    allowed_stores = frozenset(_selected_stores(radar))
-    eligible_products = [
-        product
-        for product in products
-        if isinstance(product, dict)
-        and product.get("store") == store
-        and store in allowed_stores
-        and float(radar.get("min_price", 0))
-        <= product.get("price", float("inf"))
-        <= float(radar["max_price"])
-        and _matches_radar_filters(product, radar)
-    ]
-    with SCAN_PROGRESS_LOCK:
-        if SCAN_PROGRESS.get("radar_id") != radar.get("id"):
-            return
-        completed_stores = SCAN_PROGRESS["completed_stores"]
-        if store not in completed_stores:
-            completed_stores.append(store)
-        SCAN_PROGRESS["pending_stores"] = [
-            pending
-            for pending in SCAN_PROGRESS["pending_stores"]
-            if pending != store
-        ]
-        existing_urls = {
-            product["url"] for product in SCAN_PROGRESS["products"]
-        }
-        for product in eligible_products:
-            if product["url"] in existing_urls:
-                continue
-            existing_urls.add(product["url"])
-            SCAN_PROGRESS["products"].append(
-                {
-                    **product,
-                    "id": f"scan-{radar['id']}-{len(existing_urls)}",
-                    "radar_id": radar["id"],
-                    "query": radar.get("query", ""),
-                    "min_price": float(radar.get("min_price", 0)),
-                    "max_price": float(radar["max_price"]),
-                    "active": True,
-                    "last_seen": datetime.now().astimezone().isoformat(
-                        timespec="milliseconds"
-                    ),
-                    "selected_filters": SCAN_PROGRESS["selected_filters"],
-                    "provisional": True,
-                }
-            )
-        SCAN_PROGRESS["last_error"] = error
-
-
-def _finish_scan_progress(radar_id):
-    global SCAN_PROGRESS
-    with SCAN_PROGRESS_LOCK:
-        if SCAN_PROGRESS.get("radar_id") == radar_id:
-            SCAN_PROGRESS["active"] = False
-            SCAN_PROGRESS["pending_stores"] = []
-            SCAN_PROGRESS["products"] = []
-
-
-def _search_radar_stores(radar, stores=None, on_store_complete=None):
-    results = []
-    errors = []
-    selected_stores = _selected_stores(radar)
-    stores = selected_stores if stores is None else list(stores)
-    if not stores or any(
-        not isinstance(store, str)
-        or store not in STORE_CONFIGS
-        or store not in selected_stores
-        for store in stores
-    ):
-        raise ValueError("Tarama mağazaları seçili mağaza listesiyle uyuşmuyor.")
-    allowed_stores = frozenset(selected_stores)
-    with ThreadPoolExecutor(
-        max_workers=min(len(stores), MAX_CONCURRENT_REQUESTS)
-    ) as executor:
-        futures = {
-            executor.submit(
-                _search_radar,
-                {**radar, "store": store},
-            ): store
-            for store in stores
-        }
-        for future in as_completed(futures):
-            store = futures[future]
-            try:
-                products, error = future.result()
-            except Exception as error:
-                products, error = [], f"{store} araması başarısız: {error}"
-            results.extend(
-                product
-                for product in products
-                if isinstance(product, dict)
-                and product.get("store") == store
-                and product.get("store") in allowed_stores
-            )
-            if error:
-                errors.append(error)
-            if on_store_complete is not None:
-                try:
-                    on_store_complete(store, products, error)
-                except Exception as callback_error:
-                    message = f"{store} ara sonuçları yayımlanamadı: {callback_error}"
-                    errors.append(message)
-                    print(f"[ERROR] {message}", flush=True)
-    results.sort(key=lambda product: product["price"])
-    return results, errors
-
-
-def _radar_query_from_selection(payload):
-    category = payload.get("category")
-    subcategory = payload.get("subcategory")
-    feature = payload.get("feature")
-    if category not in CATEGORY_CATALOG:
-        raise ValueError("Listeden geçerli bir ana kategori seçin.")
-    subcategories = CATEGORY_CATALOG[category]
-    if subcategory not in subcategories:
-        raise ValueError("Seçilen ana kategoriye uygun bir alt kategori seçin.")
-    selected_payload = payload.get("selected_filters")
-    if subcategory == "Monitör":
-        monitor_filters = {}
-        for key, allowed_values in MONITOR_FILTERS.items():
-            values = (
-                selected_payload.get(key, [])
-                if isinstance(selected_payload, dict)
-                else payload.get(key, [])
-            )
-            if isinstance(values, str):
-                values = [] if values in ("", ALL_FILTERS) else [values]
-            if not isinstance(values, list) or any(
-                not isinstance(value, str)
-                or value not in allowed_values
-                or value == ALL_FILTERS
-                for value in values
-            ):
-                raise ValueError(f"Monitör için geçersiz filtre: {key}.")
-            monitor_filters[key] = list(dict.fromkeys(values))
-        selected_filters = {
-            "features": [],
-            **monitor_filters,
-        }
-    else:
-        allowed_features = subcategories[subcategory]
-        if isinstance(selected_payload, dict):
-            features = selected_payload.get("features", [])
-        elif isinstance(selected_payload, list):
-            features = selected_payload
-        elif feature in (None, "", ALL_FILTERS):
-            features = []
-        else:
-            features = [feature]
-        if not isinstance(features, list) or any(
-            not isinstance(value, str) or value not in allowed_features
-            for value in features
-        ):
-            raise ValueError("Seçilen alt kategoriye uygun filtreleri işaretleyin.")
-        selected_filters = {
-            "features": list(dict.fromkeys(features)),
-            "refresh_rate": [],
-            "resolution": [],
-            "panel_type": [],
-        }
-        monitor_filters = {}
-
-    selected_values = [
-        value for values in selected_filters.values() for value in values
-    ]
-    feature_label = " · ".join(selected_values) if selected_values else ALL_FILTERS
-    return (
-        subcategory,
-        category,
-        subcategory,
-        feature_label,
-        monitor_filters,
-        selected_filters,
-    )
-
-
-def _normalized_filter_text(value):
-    normalized = unicodedata.normalize("NFKD", value.casefold())
-    normalized = "".join(
-        character for character in normalized if not unicodedata.combining(character)
-    )
-    return normalized.replace("ı", "i")
-
-
-def _negative_keyword_pattern():
-    alternatives = []
-    for keyword in NEGATIVE_KEYWORD_STEMS:
-        normalized = _normalized_filter_text(keyword)
-        words = re.escape(normalized).replace(r"\ ", r"\s+")
-        if normalized == "stand":
-            alternatives.append(r"\bstand(?:i|lari|leri|lar|ler|in|ina|inda)?\b")
-            continue
-        alternatives.append(rf"\b{words}\w*")
-    return re.compile("|".join(alternatives), re.IGNORECASE)
-
-
-NEGATIVE_KEYWORD_PATTERN = _negative_keyword_pattern()
-
-
-def _feature_pattern(feature):
-    normalized = _normalized_filter_text(feature)
-    gpu_match = re.fullmatch(r"(rtx|gtx|rx)\s*(\d{3,4})", normalized)
-    if gpu_match:
-        family, model = gpu_match.groups()
-        return re.compile(
-            rf"(?<!\w){family}[\s-]*{model}(?!\w)",
-            re.IGNORECASE,
-        )
-    if normalized == "oled":
-        return re.compile(r"(?<!qd-)(?<!qd )\boled\b", re.IGNORECASE)
-    escaped = re.escape(normalized).replace(r"\ ", r"\s+")
-    escaped = escaped.replace(r"\-", r"[\s-]*")
-    if normalized.endswith("+"):
-        escaped = escaped[:-2] + r"(?:\+|plus)?"
-    if normalized == "16gb ram":
-        escaped = r"(?<!\w)16\s*gb(?:\s*ram)?(?!\w)"
-    return re.compile(rf"(?<!\w){escaped}(?!\w)", re.IGNORECASE)
-
-
-def _catalog_features_by_dimension():
-    features_by_dimension = {}
-    for subcategories in CATEGORY_CATALOG.values():
-        for options in subcategories.values():
-            for value in options:
-                features_by_dimension.setdefault(_feature_dimension(value), set()).add(value)
-    for options in MONITOR_FILTERS.values():
-        for value in options:
-            if value != ALL_FILTERS:
-                features_by_dimension.setdefault(_feature_dimension(value), set()).add(value)
-    return features_by_dimension
-
-
-def _feature_dimension(value):
-    normalized = _normalized_filter_text(value)
-    if re.search(r"\b(?:rtx|gtx|rx)\s*\d{3,4}\b", normalized):
-        return "gpu"
-    if re.search(r"\b\d+\s*gb\s*ram\b", normalized):
-        return "ram"
-    if re.search(r"\bddr\d\b", normalized):
-        return "memory_generation"
-    if re.search(r"\b\d+(?:tb|gb)\s*(?:nvme|ssd|hdd)\b", normalized):
-        return "storage"
-    if re.search(r"\b(?:oled|ips|va|tn|mini[\s-]*led)\b", normalized):
-        return "panel"
-    if re.search(r"\b\d{2,4}\s*hz\b", normalized):
-        return "refresh_rate"
-    if re.search(r"\b(?:720p|1080p|1440p|2160p|4k|8k|fhd|qhd|uhd)\b", normalized):
-        return "resolution"
-    if re.search(r"\b\d{2,3}\s*(?:in[cç]|inch|inç)\b", normalized):
-        return "screen_size"
-    if re.search(r"\b(?:5g|4g|lte|wifi\s*[67])\b", normalized):
-        return "connectivity"
-    return "features"
-
-
-def _selected_filter_map(radar):
-    filters = radar.get("selected_filters")
-    if isinstance(filters, dict):
-        return filters
-    legacy_filters = radar.get("monitor_filters")
-    if isinstance(legacy_filters, dict):
-        return {
-            key: ([] if value in (None, "", ALL_FILTERS) else [value])
-            if isinstance(value, str)
-            else value
-            for key, value in legacy_filters.items()
-        }
-    legacy_feature = radar.get("feature")
-    return {"features": [] if legacy_feature in (None, "", ALL_FILTERS) else [legacy_feature]}
-
-
-def _matches_radar_filters(product, radar):
-    title = _normalized_filter_text(str(product.get("title", "")))
-    full_text = _normalized_filter_text(
-        f"{product.get('title', '')} {product.get('description', '')}"
-    )
-    if NEGATIVE_KEYWORD_PATTERN.search(full_text):
-        return False
-
-    filters = _selected_filter_map(radar)
-
-    features = filters.get("features", [])
-    if isinstance(features, str):
-        features = [features] if features not in ("", ALL_FILTERS) else []
-    features_by_dimension = {}
-    for value in features:
-        features_by_dimension.setdefault(_feature_dimension(value), []).append(value)
-    category_options = CATEGORY_CATALOG.get(radar.get("category"), {}).get(
-        radar.get("subcategory"), ()
-    )
-    catalog_features = _catalog_features_by_dimension()
-    for dimension, selected_values in features_by_dimension.items():
-        if not any(_feature_pattern(value).search(title) for value in selected_values):
-            return False
-        if dimension == "gpu":
-            selected_models = {
-                re.sub(
-                    r"[\s-]+",
-                    "",
-                    _normalized_filter_text(value),
-                )
-                for value in selected_values
-            }
-            detected_models = {
-                re.sub(
-                    r"[\s-]+",
-                    "",
-                    _normalized_filter_text(value),
-                )
-                for value in re.findall(
-                    r"\b(?:rtx|gtx|rx)\s*\d{3,4}\b",
-                    title,
-                )
-            }
-            if detected_models - selected_models:
-                return False
-        if dimension == "ram":
-            selected_capacities = set()
-            for value in selected_values:
-                match = re.search(r"\b(\d+)\s*gb\b", _normalized_filter_text(value))
-                if match:
-                    selected_capacities.add(int(match.group(1)))
-            detected_capacities = {
-                int(match)
-                for match in re.findall(r"\b(\d+)\s*gb\s*(?:ram|ddr\d)\b", title)
-            }
-            if detected_capacities - selected_capacities:
-                return False
-        dimension_options = set(category_options)
-        if dimension in {
-            "gpu",
-            "ram",
-            "memory_generation",
-            "storage",
-            "panel",
-            "refresh_rate",
-            "resolution",
-            "screen_size",
-            "connectivity",
-        }:
-            dimension_options.update(catalog_features.get(dimension, ()))
-        conflicting_values = [
-            value for value in dimension_options
-            if _feature_dimension(value) == dimension and value not in selected_values
-        ]
-        if any(_feature_pattern(value).search(title) for value in conflicting_values):
-            return False
-
-    refresh_rates = filters.get("refresh_rate", [])
-    if isinstance(refresh_rates, str):
-        refresh_rates = [] if refresh_rates == ALL_FILTERS else [refresh_rates]
-    if refresh_rates:
-        available_rates = [
-            int(rate)
-            for rate in re.findall(r"(?<!\d)(\d{2,4})\s*hz\b", title)
-        ]
-        def rate_is_selected(rate):
-            return any(
-                rate >= int(re.search(r"\d+", requested).group())
-                if requested == "500Hz+"
-                else rate == int(re.search(r"\d+", requested).group())
-                for requested in refresh_rates
-            )
-
-        if not available_rates or not any(
-            rate_is_selected(rate) for rate in available_rates
-        ):
-            return False
-        if any(not rate_is_selected(rate) for rate in available_rates):
-            return False
-
-    resolution_patterns = {
-        "HD (720p)": r"\b720p\b|\b1280\s*[x×]\s*720\b",
-        "FHD (1080p)": r"\b1080p\b|\b1920\s*[x×]\s*1080\b|\bfhd\b|\bfull[\s-]?hd\b",
-        "QHD / 2K (1440p)": r"\b1440p\b|\b2560\s*[x×]\s*1440\b|\bqhd\b|\b2k\b",
-        "UW-QHD (Ultrawide 1440p)": r"\b3440\s*[x×]\s*1440\b|\bultra\s*wide\b|\bultrawide\b|\buw[\s-]?qhd\b",
-        "UHD / 4K (2160p)": r"\b2160p\b|\b3840\s*[x×]\s*2160\b|\b4k\b|\buhd\b",
-        "8K": r"\b8k\b|\b4320p\b|\b7680\s*[x×]\s*4320\b",
-    }
-    resolutions = filters.get("resolution", [])
-    if isinstance(resolutions, str):
-        resolutions = [] if resolutions == ALL_FILTERS else [resolutions]
-    if resolutions:
-        if not any(
-            resolution in resolution_patterns
-            and re.search(resolution_patterns[resolution], title)
-            for resolution in resolutions
-        ):
-            return False
-        conflicting_resolutions = [
-            value for value in MONITOR_FILTERS["resolution"]
-            if value != ALL_FILTERS and value not in resolutions
-        ]
-        if any(
-            re.search(resolution_patterns[value], title)
-            and not (
-                value == "QHD / 2K (1440p)"
-                and re.search(
-                    r"\b3440\s*[x×]\s*1440\b|\bultra\s*wide\b|\bultrawide\b|\buw[\s-]?qhd\b",
-                    title,
-                )
-            )
-            for value in conflicting_resolutions
-            if value in resolution_patterns
-        ):
-            return False
-
-    panel_patterns = {
-        "IPS": r"\bips\b",
-        "Fast IPS": r"\bfast[\s-]?ips\b",
-        "VA": r"\bva\b",
-        "OLED": r"(?<!qd-)\boled\b",
-        "QD-OLED": r"\bqd[\s-]?oled\b",
-        "TN": r"\btn\b",
-        "Mini-LED": r"\bmini[\s-]?led\b",
-    }
-    panel_types = filters.get("panel_type", [])
-    if isinstance(panel_types, str):
-        panel_types = [] if panel_types == ALL_FILTERS else [panel_types]
-    if panel_types:
-        if not any(
-            panel in panel_patterns and re.search(panel_patterns[panel], title)
-            for panel in panel_types
-        ):
-            return False
-        conflicting_panels = [
-            value for value in MONITOR_FILTERS["panel_type"]
-            if value != ALL_FILTERS and value not in panel_types
-        ]
-        if any(
-            re.search(panel_patterns[value], title)
-            and not (
-                value == "Fast IPS" and "IPS" in panel_types
-                or value == "IPS" and "Fast IPS" in panel_types
-            )
-            for value in conflicting_panels
-            if value in panel_patterns
-        ):
-            return False
-    return True
-
-
-def _matches_radar_fallback(product, radar):
-    full_text = _normalized_filter_text(
-        f"{product.get('title', '')} {product.get('description', '')}"
-    )
-    if NEGATIVE_KEYWORD_PATTERN.search(full_text):
-        return False
-
-    title = _normalized_filter_text(str(product.get("title", "")))
-    keyword_sources = [radar.get("query"), radar.get("subcategory")]
-    for values in _selected_filter_map(radar).values():
-        if isinstance(values, str):
-            keyword_sources.append(values)
-        elif isinstance(values, (list, tuple, set)):
-            keyword_sources.extend(values)
-
-    terms = {
-        term
-        for value in keyword_sources
-        if isinstance(value, str)
-        for term in re.findall(r"\w+", _normalized_filter_text(value))
-        if len(term) >= 3 and term not in {"tumunu", "sec"}
-    }
-    return bool(terms) and any(
-        re.search(rf"(?<!\w){re.escape(term)}(?!\w)", title)
-        for term in terms
-    )
-
-
-def _save_radar_status(radar_id, status, last_scan):
-    radars = load_radars()
-    for index, radar in enumerate(radars):
-        if radar["id"] == radar_id:
-            radars[index] = {
-                **radar,
-                "status": status,
-                "last_scan": last_scan,
-            }
-            break
-    _save_json_list(RADARS_FILE, radars, RADARS_LOCK)
-
-
-def _scan_radar(radar):
-    checked_at = datetime.now().astimezone().isoformat(timespec="milliseconds")
-    try:
-        selected_stores = _selected_stores(radar)
-    except ValueError as error:
-        _save_radar_status(radar["id"], str(error), checked_at)
-        print(f"⚠️ {error}", flush=True)
-        return []
-    if not selected_stores:
-        message = "En az bir geçerli mağaza seçin."
-        _save_radar_status(radar["id"], message, checked_at)
-        print(f"⚠️ {message}", flush=True)
-        return []
-    _begin_scan_progress(radar, selected_stores)
-    if len(selected_stores) > 1:
-        print(
-            f"\nÇoklu mağaza radarı: {radar['query']} "
-            f"({len(selected_stores)} mağaza eş zamanlı)",
-            flush=True,
-        )
-    else:
-        print(
-            f"\nAkıllı arama: {selected_stores[0]} / {radar['query']}",
-            flush=True,
-        )
-    products, errors = _search_radar_stores(
-        radar,
-        selected_stores,
-        on_store_complete=lambda store, store_products, store_error: (
-            _record_scan_store_result(radar, store, store_products, store_error)
-        ),
-    )
-    error = "Bazı mağazalar taranamadı: " + " ".join(errors) if errors else None
-    if error and not products:
-        _save_radar_status(radar["id"], error, checked_at)
-        print(f"⚠️ {error}", flush=True)
-        _finish_scan_progress(radar["id"])
-        return []
-
-    scanned_products = _products_from_selected_stores(products, selected_stores)
-    budget = float(radar["max_price"])
-    minimum_price = float(radar.get("min_price", 0))
-    scanned_product_count = len(scanned_products)
-    strict_products = [
-        product for product in scanned_products
-        if _matches_radar_filters(product, radar)
-    ]
-    used_filter_fallback = bool(scanned_product_count and not strict_products)
-    products = strict_products
-    if used_filter_fallback:
-        products = [
-            product for product in scanned_products
-            if _matches_radar_fallback(product, radar)
-        ]
-    matching = [
-        product
-        for product in products
-        if minimum_price <= product["price"] <= budget
-    ]
-    try:
-        offers = load_offers()
-        found_products = {product["url"]: product for product in products}
-        failed_stores = {
-            store for store in selected_stores
-            if any(error.startswith(f"{store} ") for error in errors)
-        }
-        successful_stores = set(selected_stores) - failed_stores
-        for index, offer in enumerate(offers):
-            if offer.get("radar_id") == radar["id"] and offer.get("store") not in selected_stores:
-                offers[index] = {**offer, "active": False, "shock_alert": None}
-            elif offer.get("radar_id") == radar["id"] and offer.get("store") in successful_stores:
-                if offer.get("url") not in found_products:
-                    offers[index] = {**offer, "active": False, "shock_alert": None}
-
-        new_offers = []
-        for product in products:
-            existing_index = next(
+            db.execute(
+                """INSERT INTO products
+                   (id, title, category, brand, current_lowest_price, old_price,
+                    lowest_store_name, image_url, description)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    index for index, offer in enumerate(offers)
-                    if offer.get("radar_id") == radar["id"]
-                    and offer.get("url") == product["url"]
+                    product_id,
+                    title,
+                    category,
+                    brand,
+                    low_price,
+                    old_price,
+                    STORES[low_store_index][0],
+                    image_url,
+                    description,
                 ),
-                None,
             )
-            previous_offer = offers[existing_index] if existing_index is not None else {}
-            shock_alert = _detect_shock_drop(
-                previous_offer,
-                product["price"],
-                radar,
-                checked_at,
-            )
-            if shock_alert is None:
-                previous_alert = previous_offer.get("shock_alert")
-                if (
-                    radar.get("shock_mode") in ("amount", "percent")
-                    and isinstance(previous_alert, dict)
-                    and previous_alert.get("mode") == radar.get("shock_mode")
-                    and previous_alert.get("threshold")
-                    == radar.get("shock_threshold", 0)
-                ):
-                    alert_price = previous_alert.get("current_price")
-                    if (
-                        isinstance(alert_price, (int, float))
-                        and math.isfinite(alert_price)
-                        and product["price"] <= alert_price
-                    ):
-                        shock_alert = previous_alert
-            offer = {
-                **previous_offer,
-                **product,
-                "id": (
-                    offers[existing_index]["id"]
-                    if existing_index is not None
-                    else str(uuid.uuid4())
-                ),
-                "radar_id": radar["id"],
-                "query": radar["query"],
-                "stores": radar.get("stores", selected_stores),
-                "min_price": minimum_price,
-                "max_price": budget,
-                "category": radar.get("category"),
-                "subcategory": radar.get("subcategory"),
-                "feature": radar.get("feature"),
-                "monitor_filters": radar.get("monitor_filters", {}),
-                "selected_filters": radar.get("selected_filters", {}),
-                "filter_fallback": used_filter_fallback,
-                "price_history": _append_price_history(
-                    previous_offer,
-                    product["price"],
-                    checked_at,
-                ),
-                "shock_alert": shock_alert,
-                "is_discounted": shock_alert is not None,
-                "active": minimum_price <= product["price"] <= budget,
-                "last_seen": checked_at,
-            }
-            if not product.get("image_url"):
-                offer["image_url"] = previous_offer.get("image_url")
-            if existing_index is None:
-                if offer["active"]:
-                    new_offers.append(offer)
-                offers.insert(0, offer)
-            else:
-                offers[existing_index] = offer
-        offers.sort(key=lambda offer: (not offer.get("active", False), offer.get("price", math.inf)))
-        _save_json_list(OFFERS_FILE, offers, OFFERS_LOCK)
-        matching.sort(key=lambda product: product["price"])
-        over_budget_products = [
-            product for product in products if product["price"] > budget
-        ]
-        status = f"{len(matching)} fırsat bulundu."
-        if used_filter_fallback and matching:
-            status = (
-                f"{len(matching)} fırsat bulundu (esnek özellik eşleşmesi; "
-                "kesin filtrede eşleşme bulunmadı)."
-            )
-        if not matching:
-            if used_filter_fallback and products:
-                status = (
-                    f"Kesin özellik eşleşmesi bulunamadı; {len(products)} ürün "
-                    "aksesuar filtresi korunarak esnek eşleşmeyle gösteriliyor."
-                )
-            elif used_filter_fallback:
-                status = (
-                    "Kesin özellik eşleşmesi bulunamadı ve ürün başlığında "
-                    "arama anahtar kelimeleriyle eşleşen sonuç yok."
-                )
-            elif scanned_product_count and not products:
-                status = (
-                    f"{scanned_product_count} ürün tarandı ancak seçilen teknik özellikler "
-                    "kesin eşleşmedi; yanlış ürünleri göstermek için filtre gevşetilmedi."
-                )
-            elif products:
-                status = (
-                    f"{len(products)} ürün özellikleri karşıladı ancak belirlenen "
-                    "fiyat aralığında eşleşme bulunamadı."
-                )
-            else:
-                status = "Mağazalardan uygun fiyatlı ürün verisi alınamadı."
-        if over_budget_products:
-            nearest_product = min(over_budget_products, key=lambda product: product["price"])
-            status += (
-                f" Bütçenizin biraz üzerinde {len(over_budget_products)} ürün bulundu; "
-                f"en yakın fiyat {format_price(nearest_product['price'])} TL."
-            )
-        below_minimum_products = [
-            product for product in products if product["price"] < minimum_price
-        ]
-        if below_minimum_products:
-            status += (
-                f" {len(below_minimum_products)} ürün belirlenen minimum fiyatın altında."
-            )
-        if error:
-            status = f"{status} {error}"
-        _save_radar_status(radar["id"], status, checked_at)
-        print(f"{radar['store']}: {status}", flush=True)
-        _finish_scan_progress(radar["id"])
-        return new_offers
-    except RuntimeError as error:
-        message = f"Fırsatlar kaydedilemedi: {error}"
-        _save_radar_status(radar["id"], message, checked_at)
-        print(f"❌ {message}", flush=True)
-        _finish_scan_progress(radar["id"])
-        return []
 
+            offer_rows = []
+            for store_index, (store_name, url_template) in enumerate(STORES):
+                multiplier = 1 + ((store_index - low_store_index) % len(STORES)) * 0.018
+                offer_price = round(low_price * multiplier, 2)
+                offer_rows.append(
+                    (
+                        product_id,
+                        store_name,
+                        offer_price,
+                        url_template.format(query=quote_plus(title)),
+                    )
+                )
+            db.executemany(
+                """INSERT INTO store_prices
+                   (product_id, store_name, price, product_url) VALUES (?, ?, ?, ?)""",
+                offer_rows,
+            )
 
-def scan_radars(radar_ids=None):
-    if not RADAR_SCAN_LOCK.acquire(blocking=False):
-        return None
-    new_offers = []
-    try:
-        radars = load_radars()
-        selected = [
-            radar for radar in radars
-            if radar_ids is None or radar["id"] in radar_ids
-        ]
-        for radar in selected:
-            new_offers.extend(_scan_radar(radar))
-    finally:
-        RADAR_SCAN_LOCK.release()
-    return new_offers
-
-
-def _valid_product_url(value):
-    if not isinstance(value, str):
-        return False
-    try:
-        parsed = urlsplit(value.strip())
-    except ValueError:
-        return False
-    return (
-        parsed.scheme in ("http", "https")
-        and bool(parsed.netloc)
-        and parsed.username is None
-        and parsed.password is None
-    )
+            history_rows = []
+            for days_ago in range(365, -1, -1):
+                recorded_on = today - timedelta(days=days_ago)
+                wave = max(0, math.sin((365 - days_ago + product_id * 11) / 28)) * 0.025
+                markup = 0 if days_ago == 0 else days_ago * 0.00025 + wave
+                price = round(low_price * (1 + markup), 2)
+                history_rows.append((product_id, recorded_on.isoformat(), price))
+            db.executemany(
+                """INSERT INTO price_history (product_id, recorded_on, price)
+                   VALUES (?, ?, ?)""",
+                history_rows,
+            )
 
 
 @asynccontextmanager
-async def lifespan(_application):
-    _ensure_database()
-    load_products()
-    load_radars()
-    load_offers()
-    threading.Thread(target=_periodic_checks, daemon=True).start()
+async def lifespan(_: FastAPI):
+    initialize_database()
     yield
 
 
-app = FastAPI(title="İndirim Radarı API", lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type"],
-)
+app = FastAPI(title="İndirim Radarı", version="1.0.0", lifespan=lifespan)
 
 
-@app.exception_handler(HTTPException)
-async def handle_http_exception(_request, error):
-    detail = error.detail
-    message = detail if isinstance(detail, str) else json.dumps(detail, ensure_ascii=False)
-    return JSONResponse(
-        status_code=error.status_code,
-        content={"error": message},
-        headers=error.headers,
-    )
-
-
-async def _read_api_json(request: Request):
-    body = await request.body()
-    if not body or len(body) > 65536:
-        raise HTTPException(
-            status_code=400,
-            detail="İstek gövdesi boş veya izin verilen boyutu aşıyor.",
-        )
-    try:
-        return json.loads(body)
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise HTTPException(status_code=400, detail=f"Geçersiz JSON: {error}") from error
-
-
-@app.get("/health")
-def health_check():
-    return {"ok": True}
+def product_card(row: sqlite3.Row) -> dict:
+    return dict(row)
 
 
 @app.get("/api/categories")
-def get_categories():
-    try:
-        return {
-            "categories": database.load_categories(),
-            "stores": database.load_stores(),
-            "monitor_filters": MONITOR_FILTERS,
-            "store_groups": STORE_GROUPS,
-        }
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
+def get_categories() -> list[dict]:
+    with connect() as db:
+        rows = db.execute(
+            """SELECT c.id, c.name, c.icon, COUNT(p.id) AS product_count
+               FROM categories c LEFT JOIN products p ON p.category = c.id
+               GROUP BY c.id ORDER BY c.name COLLATE NOCASE"""
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 
-@app.get("/api/history/{collection_name}/{entry_id}")
-def get_price_history(collection_name: str, entry_id: str):
-    if collection_name not in ("products", "offers"):
-        raise HTTPException(status_code=404, detail="Ürün geçmişi bulunamadı.")
-    try:
-        collection = load_products() if collection_name == "products" else load_offers()
-        entry = next((item for item in collection if item.get("id") == entry_id), None)
-        if entry is None:
-            raise HTTPException(status_code=404, detail="Ürün geçmişi bulunamadı.")
-        cutoff = (
-            datetime.now().astimezone() - timedelta(days=366)
-        ).strftime("%Y-%m-%d %H:%M")
-        history = database.load_price_history(
-            collection_name,
-            entry_id,
-            since=cutoff,
-        )
+@app.get("/api/brands")
+def get_brands(category: str = "") -> list[str]:
+    with connect() as db:
+        if category:
+            rows = db.execute(
+                """SELECT DISTINCT brand FROM products WHERE category = ?
+                   ORDER BY brand COLLATE NOCASE""",
+                (category,),
+            ).fetchall()
+        else:
+            rows = db.execute(
+                "SELECT DISTINCT brand FROM products ORDER BY brand COLLATE NOCASE"
+            ).fetchall()
+    return [row["brand"] for row in rows]
+
+
+@app.get("/api/home")
+def get_home() -> dict:
+    with connect() as db:
+        popular = db.execute(
+            """SELECT p.*, c.name AS category_name,
+                      (SELECT COUNT(*) FROM store_prices s WHERE s.product_id = p.id) AS offer_count
+               FROM products p JOIN categories c ON c.id = p.category
+               ORDER BY p.current_lowest_price ASC, p.id ASC LIMIT 12"""
+        ).fetchall()
+        deals = db.execute(
+            """SELECT p.*, c.name AS category_name,
+                      (SELECT COUNT(*) FROM store_prices s WHERE s.product_id = p.id) AS offer_count
+               FROM products p JOIN categories c ON c.id = p.category
+               ORDER BY (p.old_price - p.current_lowest_price) / p.old_price DESC, p.id ASC
+               LIMIT 8"""
+        ).fetchall()
+        categories = db.execute(
+            """SELECT c.id, c.name, c.icon, COUNT(p.id) AS product_count
+               FROM categories c LEFT JOIN products p ON p.category = c.id
+               GROUP BY c.id ORDER BY c.name COLLATE NOCASE"""
+        ).fetchall()
         return {
-            "id": entry_id,
-            "title": entry.get("title") or entry.get("url") or "Ürün",
-            "price_history": history,
-            "current_price": entry.get("current_price", entry.get("price")),
+            "popular": [product_card(row) for row in popular],
+            "deals": [product_card(row) for row in deals],
+            "categories": [dict(row) for row in categories],
         }
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
 
 
 @app.get("/api/products")
-def get_products():
-    try:
-        return load_products()
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
-
-
-@app.get("/api/scan-progress")
-def get_scan_progress():
-    try:
-        with SCAN_PROGRESS_LOCK:
-            return {
-                **SCAN_PROGRESS,
-                "completed_stores": list(SCAN_PROGRESS["completed_stores"]),
-                "pending_stores": list(SCAN_PROGRESS["pending_stores"]),
-                "products": [dict(product) for product in SCAN_PROGRESS["products"]],
-            }
-    except Exception as error:
-        message = str(error)
-        print(f"❌ Tarama durumu alınamadı: {message}", flush=True)
-        return JSONResponse(
-            status_code=200,
-            content={"status": "error", "message": message},
+def get_products(
+    q: str = "",
+    category: str = "",
+    brand: str = "",
+    store: str = "",
+    min_price: Annotated[float | None, Query(ge=0)] = None,
+    max_price: Annotated[float | None, Query(ge=0)] = None,
+    sort: str = "relevance",
+    limit: Annotated[int, Query(ge=1, le=100)] = 100,
+) -> dict:
+    clauses: list[str] = []
+    values: list[object] = []
+    if q.strip():
+        clauses.append("(p.title LIKE ? OR p.brand LIKE ? OR p.description LIKE ?)")
+        search = f"%{q.strip()[:100]}%"
+        values.extend((search, search, search))
+    if category:
+        clauses.append("p.category = ?")
+        values.append(category)
+    if brand:
+        clauses.append("p.brand = ?")
+        values.append(brand)
+    if min_price is not None:
+        clauses.append("p.current_lowest_price >= ?")
+        values.append(min_price)
+    if max_price is not None:
+        clauses.append("p.current_lowest_price <= ?")
+        values.append(max_price)
+    if store:
+        clauses.append(
+            "EXISTS (SELECT 1 FROM store_prices s WHERE s.product_id = p.id AND s.store_name = ?)"
         )
+        values.append(store)
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    order_by = {
+        "price_asc": "p.current_lowest_price ASC, p.id ASC",
+        "price_desc": "p.current_lowest_price DESC, p.id ASC",
+        "discount": "(p.old_price - p.current_lowest_price) / p.old_price DESC, p.id ASC",
+        "relevance": "p.title COLLATE NOCASE ASC, p.id ASC",
+    }.get(sort, "p.title COLLATE NOCASE ASC, p.id ASC")
+    with connect() as db:
+        rows = db.execute(
+            f"""SELECT p.*, c.name AS category_name,
+                       (SELECT COUNT(*) FROM store_prices s WHERE s.product_id = p.id) AS offer_count
+                FROM products p JOIN categories c ON c.id = p.category
+                {where} ORDER BY {order_by} LIMIT ?""",
+            (*values, limit),
+        ).fetchall()
+        total = db.execute(
+            f"SELECT COUNT(*) FROM products p {where}", values
+        ).fetchone()[0]
+        products = [product_card(row) for row in rows]
+    return {"items": products, "total": total}
 
 
-@app.get("/api/radars")
-def get_radars():
-    try:
-        return load_radars()
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
+@app.get("/api/products/{product_id}")
+def get_product(product_id: int) -> dict:
+    with connect() as db:
+        row = db.execute(
+            """SELECT p.*, c.name AS category_name,
+                      (SELECT COUNT(*) FROM store_prices s WHERE s.product_id = p.id) AS offer_count
+               FROM products p JOIN categories c ON c.id = p.category WHERE p.id = ?""",
+            (product_id,),
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Ürün bulunamadı")
+        product = product_card(row)
+        offers = db.execute(
+            """SELECT store_name, price, product_url FROM store_prices
+               WHERE product_id = ? ORDER BY price ASC, store_name ASC""",
+            (product_id,),
+        ).fetchall()
+        product["offers"] = [dict(offer) for offer in offers]
+    return product
 
 
-@app.get("/api/offers")
-def get_offers():
-    try:
-        return load_offers()
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
-
-
-@app.get("/api/catalog/vitrines")
-def get_catalog_vitrines():
-    try:
-        return database.load_vitrines()
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
-
-
-@app.get("/api/offers/{offer_id}")
-async def get_offer_detail(offer_id: str, sync: bool = True):
-    try:
-        offers = await asyncio.to_thread(load_offers)
-        offer = next(
-            (item for item in offers if item.get("id") == offer_id),
-            None,
-        )
-        if offer is None:
-            raise HTTPException(status_code=404, detail="Ürün bulunamadı.")
-        if sync and _valid_product_url(offer.get("url")):
-            _schedule_offer_sync(offer_id)
-        cutoff = (
-            datetime.now().astimezone() - timedelta(days=366)
-        ).strftime("%Y-%m-%d %H:%M")
-        history = await asyncio.to_thread(
-            database.load_price_history,
-            "offers",
-            offer_id,
-            cutoff,
-        )
-        offers = await asyncio.to_thread(load_offers)
-        offer = next(
-            (item for item in offers if item.get("id") == offer_id),
-            None,
-        )
-        if offer is None:
-            raise HTTPException(status_code=404, detail="Ürün bulunamadı.")
-        with OFFER_SYNC_LOCK:
-            syncing = offer_id in OFFER_SYNCING
-            sync_error = OFFER_SYNC_ERRORS.get(offer_id)
-        return {
-            "offer": offer,
-            "price_history": history,
-            "syncing": syncing,
-            "sync_error": sync_error,
-        }
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
-
-
-@app.get("/api/search")
-def search_offers(request: Request):
-    query = request.query_params.get("q", "")
-    category = request.query_params.get("category", "")
-    subcategory = request.query_params.get("subcategory", "")
-    brand = request.query_params.get("brand", "")
-    technical = request.query_params.get("technical", "")
-    try:
-        min_price = (
-            float(request.query_params["min_price"])
-            if request.query_params.get("min_price")
-            else None
-        )
-        max_price = (
-            float(request.query_params["max_price"])
-            if request.query_params.get("max_price")
-            else None
-        )
-        stores = request.query_params.getlist("store")
-        if any(store not in STORE_CONFIGS for store in stores):
-            raise ValueError("Mağaza filtresi geçersiz.")
-        category_catalog = database.load_categories()
-        if category and category not in category_catalog:
-            raise ValueError("Kategori filtresi geçersiz.")
-        if subcategory and (
-            not category or subcategory not in category_catalog[category]
-        ):
-            raise ValueError("Alt kategori filtresi geçersiz.")
-        if len(brand) > 120 or len(technical) > 120 or len(query) > 120:
-            raise ValueError("Arama, marka ve teknik özellik filtreleri en fazla 120 karakter olabilir.")
-        if min_price is not None and (
-            not math.isfinite(min_price) or min_price < 0
-        ):
-            raise ValueError("Minimum fiyat sıfır veya daha büyük olmalıdır.")
-        if max_price is not None and (
-            not math.isfinite(max_price) or max_price <= 0
-        ):
-            raise ValueError("Maksimum fiyat sıfırdan büyük olmalıdır.")
-        if (
-            min_price is not None
-            and max_price is not None
-            and min_price > max_price
-        ):
-            raise ValueError("Minimum fiyat maksimum fiyattan büyük olamaz.")
-        return database.search_products(
-            query=query,
-            min_price=min_price,
-            max_price=max_price,
-            stores=stores,
-            category=category,
-            subcategory=subcategory,
-            brand=brand,
-            technical=technical,
-        )
-    except ValueError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
-
-
-@app.get("/")
-def get_index():
-    return FileResponse(
-        ROOT / "index.html",
-        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
-    )
-
-
-@app.get("/tum-kategoriler")
-def get_all_categories_page():
-    return get_index()
-
-
-@app.get("/kategori/{category_slug}")
-def get_category_page(category_slug: str):
-    if not category_slug.strip():
-        raise HTTPException(status_code=404, detail="Kategori sayfası bulunamadı.")
-    return get_index()
-
-
-@app.get("/urun/{offer_id}")
-def get_offer_page(offer_id: str):
-    if not offer_id.strip():
-        raise HTTPException(status_code=404, detail="Ürün sayfası bulunamadı.")
-    return get_index()
-
-
-@app.get("/index.html")
-def get_index_file():
-    return _serve_static_file("index.html", "text/html; charset=utf-8"    )
-
-
-@app.get("/style.css")
-def get_stylesheet():
-    return FileResponse(
-        ROOT / "style.css",
-        media_type="text/css",
-        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
-    )
-
-
-@app.get("/config.js")
-def get_frontend_config():
-    return _serve_static_file("config.js", "text/javascript; charset=utf-8")
-
-
-@app.get("/sw.js")
-def get_service_worker():
-    return _serve_static_file("sw.js", "text/javascript; charset=utf-8")
-
-
-def _serve_static_file(filename, media_type):
-    try:
-        body = (ROOT / filename).read_bytes()
-    except OSError as error:
-        raise HTTPException(
-            status_code=500,
-            detail=f"{filename} okunamadı: {error}",
-        ) from error
-    return Response(
-        content=body,
-        media_type=media_type,
-        headers={"Cache-Control": "no-cache"},
-    )
-
-
-@app.post("/api/check")
-def post_check():
-    try:
-        results = check_products()
-        if results is None:
-            raise HTTPException(status_code=409, detail="Fiyat kontrolü zaten sürüyor.")
-        return {"products": results}
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
-
-
-@app.post("/api/scan", status_code=202)
-def post_scan(background_tasks: BackgroundTasks):
-    if RADAR_SCAN_LOCK.locked():
-        raise HTTPException(status_code=409, detail="Radar taraması zaten sürüyor.")
-    background_tasks.add_task(_run_all_checks)
-    return {"message": "Ürün ve radar taraması başlatıldı."}
-
-
-def _build_radar(payload, existing=None):
-    if not isinstance(payload, dict):
-        raise ValueError("Radar verisi geçersiz.")
-    stores_payload = payload.get("stores")
-    if stores_payload is None:
-        store_value = payload.get("store")
-        if store_value == ALL_STORES:
-            selected_stores = list(STORE_CONFIGS)
-        elif store_value in STORE_CONFIGS:
-            selected_stores = [store_value]
-        else:
-            selected_stores = []
-    else:
-        if not isinstance(stores_payload, list) or any(
-            not isinstance(store_name, str) for store_name in stores_payload
-        ):
-            raise ValueError("Mağaza seçimi geçersiz.")
-        selected_stores = list(dict.fromkeys(stores_payload))
-        if any(store_name not in STORE_CONFIGS for store_name in selected_stores):
-            raise ValueError("Listeden geçerli mağazaları seçin.")
-    if not selected_stores:
-        raise ValueError("En az bir mağaza seçin.")
-    store = (
-        ALL_STORES
-        if len(selected_stores) == len(STORE_CONFIGS)
-        else selected_stores[0]
-    )
-    default_budget = existing.get("max_price", 0) if existing else 0
-    default_minimum = existing.get("min_price", 0) if existing else 0
-    budget = float(payload.get("max_price", default_budget))
-    minimum_price = float(payload.get("min_price", default_minimum))
-    if not math.isfinite(budget) or budget <= 0:
-        raise ValueError("Maksimum bütçe sıfırdan büyük olmalıdır.")
-    if (
-        not math.isfinite(minimum_price)
-        or minimum_price < 0
-        or minimum_price > budget
-    ):
-        raise ValueError(
-            "Minimum fiyat sıfır veya daha büyük ve maksimum fiyattan büyük olamaz."
-        )
-    default_depth = (
-        existing.get("scan_depth", DEFAULT_SCAN_DEPTH)
-        if existing
-        else DEFAULT_SCAN_DEPTH
-    )
-    depth_value = payload.get(
-        "scan_depth",
-        default_depth,
-    )
-    scan_depth_number = float(depth_value)
-    if (
-        not math.isfinite(scan_depth_number)
-        or not scan_depth_number.is_integer()
-        or not 1 <= scan_depth_number <= MAX_SCAN_DEPTH
-    ):
-        raise ValueError(
-            f"Tarama derinliği 1 ile {MAX_SCAN_DEPTH} arasında olmalıdır."
-        )
-    shock_mode = payload.get(
-        "shock_mode", existing.get("shock_mode", "none") if existing else "none"
-    )
-    shock_threshold = float(
-        payload.get(
-            "shock_threshold",
-            existing.get("shock_threshold", 0) if existing else 0,
-        )
-    )
-    if shock_mode not in ("none", "amount", "percent"):
-        raise ValueError("Geçerli bir şok indirim alarmı seçin.")
-    if shock_mode == "none":
-        shock_threshold = 0
-    elif (
-        not math.isfinite(shock_threshold)
-        or shock_threshold <= 0
-        or (shock_mode == "percent" and shock_threshold > 100)
-    ):
-        raise ValueError(
-            "Şok alarm eşiği sıfırdan büyük olmalı; yüzde eşiği en fazla 100 olabilir."
-        )
-    if "category" in payload:
-        (
-            query,
-            category,
-            subcategory,
-            feature,
-            monitor_filters,
-            selected_filters,
-        ) = _radar_query_from_selection(payload)
-    elif existing is not None and existing.get("category"):
-        query = existing["query"]
-        category = existing["category"]
-        subcategory = existing["subcategory"]
-        feature = existing.get("feature")
-        monitor_filters = payload.get(
-            "monitor_filters", existing.get("monitor_filters", {})
-        )
-        selected_filters = payload.get(
-            "selected_filters", existing.get("selected_filters", {})
-        )
-    else:
-        query = payload.get("query", existing.get("query") if existing else None)
-        if not isinstance(query, str) or not 2 <= len(query.strip()) <= 120:
-            raise ValueError("Arama kelimesi 2 ile 120 karakter arasında olmalıdır.")
-        query = query.strip()
-        category = subcategory = feature = None
-        monitor_filters = {}
-        selected_filters = {}
-    timestamp = time.strftime("%Y-%m-%dT%H:%M:%S")
+@app.get("/api/products/{product_id}/history")
+def get_price_history(
+    product_id: int,
+    period: str = "1y",
+) -> dict:
+    period_days = {"1w": 7, "1m": 30, "6m": 183, "1y": 365}
+    if period not in period_days:
+        raise HTTPException(status_code=422, detail="Geçersiz fiyat geçmişi dönemi")
+    start = date.today() - timedelta(days=period_days[period])
+    with connect() as db:
+        exists = db.execute(
+            "SELECT 1 FROM products WHERE id = ?", (product_id,)
+        ).fetchone()
+        if exists is None:
+            raise HTTPException(status_code=404, detail="Ürün bulunamadı")
+        rows = db.execute(
+            """SELECT recorded_on, price FROM price_history
+               WHERE product_id = ? AND recorded_on >= ?
+               ORDER BY recorded_on ASC""",
+            (product_id, start.isoformat()),
+        ).fetchall()
+    prices = [row["price"] for row in rows]
     return {
-        **(existing or {}),
-        "id": existing["id"] if existing else str(uuid.uuid4()),
-        "store": store,
-        "stores": selected_stores,
-        "query": query,
-        "category": category,
-        "subcategory": subcategory,
-        "feature": feature,
-        "monitor_filters": monitor_filters,
-        "selected_filters": selected_filters,
-        "min_price": minimum_price,
-        "max_price": budget,
-        "scan_depth": int(scan_depth_number),
-        "shock_mode": shock_mode,
-        "shock_threshold": shock_threshold,
-        "created_at": (
-            existing.get("created_at", timestamp) if existing else timestamp
-        ),
-        "last_scan": None,
-        "status": "Radar güncellendi; yerel katalog sonuçları anında kullanılabilir."
-        if existing
-        else "Radar yerel kataloğa kaydedildi.",
+        "points": [dict(row) for row in rows],
+        "highest": max(prices),
+        "lowest": min(prices),
+        "current": prices[-1],
     }
 
 
-def _save_radar(radar, *, insert=False):
-    radars = load_radars()
-    existing_index = next(
-        (index for index, item in enumerate(radars) if item["id"] == radar["id"]),
-        None,
-    )
-    if insert:
-        radars.insert(0, radar)
-    elif existing_index is None:
-        raise HTTPException(status_code=404, detail="Radar bulunamadı.")
-    else:
-        radars[existing_index] = radar
-    _save_json_list(RADARS_FILE, radars, RADARS_LOCK)
-    return radar
+@app.get("/")
+def home_page() -> FileResponse:
+    return FileResponse(INDEX_FILE)
 
 
-@app.post("/api/radars", status_code=201)
-async def post_radar(request: Request):
-    payload = await _read_api_json(request)
-    try:
-        radar = _build_radar(payload)
-        _save_radar(radar, insert=True)
-    except (TypeError, ValueError) as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
-    return JSONResponse(status_code=201, content=radar)
-
-
-@app.put("/api/radars/{radar_id}")
-async def update_radar(radar_id: str, request: Request):
-    payload = await _read_api_json(request)
-    try:
-        radars = load_radars()
-        existing = next((item for item in radars if item["id"] == radar_id), None)
-        if existing is None:
-            raise HTTPException(status_code=404, detail="Radar bulunamadı.")
-        radar = _build_radar(payload, existing)
-        _save_radar(radar)
-    except (TypeError, ValueError) as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
-    return radar
-
-
-@app.post("/api/products", status_code=201)
-async def post_product(request: Request):
-    payload = await _read_api_json(request)
-    try:
-        url = payload.get("url") if isinstance(payload, dict) else None
-        target = float(payload.get("target")) if isinstance(payload, dict) else 0
-        if not _valid_product_url(url):
-            raise ValueError("Ürün bağlantısı http:// veya https:// ile başlamalı.")
-        if not math.isfinite(target) or target <= 0:
-            raise ValueError("Hedef fiyat sıfırdan büyük bir sayı olmalıdır.")
-        product = {
-            "id": str(uuid.uuid4()),
-            "url": url.strip(),
-            "target": target,
-            "current_price": None,
-            "last_checked": None,
-            "message": "Henüz fiyat kontrol edilmedi.",
-            "price_history": [],
-        }
-        products = load_products()
-        products.insert(0, product)
-        save_products(products)
-    except (TypeError, ValueError) as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
-    threading.Thread(target=check_products, daemon=True).start()
-    return JSONResponse(status_code=201, content=product)
-
-
-@app.delete("/api/clear")
-def delete_all_data():
-    CHECK_LOCK.acquire()
-    try:
-        RADAR_SCAN_LOCK.acquire()
-        try:
-            save_products([])
-            _save_json_list(RADARS_FILE, [], RADARS_LOCK)
-            _save_json_list(OFFERS_FILE, [], OFFERS_LOCK)
-        finally:
-            RADAR_SCAN_LOCK.release()
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
-    finally:
-        CHECK_LOCK.release()
-    return {"ok": True}
-
-
-@app.delete("/api/radars/{radar_id}")
-def delete_radar(radar_id: str):
-    try:
-        RADAR_SCAN_LOCK.acquire()
-        try:
-            radars = load_radars()
-            remaining = [radar for radar in radars if radar["id"] != radar_id]
-            if len(remaining) == len(radars):
-                raise HTTPException(status_code=404, detail="Radar bulunamadı.")
-            _save_json_list(RADARS_FILE, remaining, RADARS_LOCK)
-            offers = load_offers()
-            remaining_offers = [
-                offer for offer in offers if offer.get("radar_id") != radar_id
-            ]
-            _save_json_list(OFFERS_FILE, remaining_offers, OFFERS_LOCK)
-        finally:
-            RADAR_SCAN_LOCK.release()
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
-    return {"ok": True}
-
-
-@app.delete("/api/products/{product_id}")
-def delete_product(product_id: str):
-    try:
-        CHECK_LOCK.acquire()
-        try:
-            products = load_products()
-            remaining = [
-                product for product in products if product["id"] != product_id
-            ]
-            if len(remaining) == len(products):
-                raise HTTPException(
-                    status_code=404,
-                    detail="Ürün takip listesinde bulunamadı.",
-                )
-            save_products(remaining)
-        finally:
-            CHECK_LOCK.release()
-    except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
-    return {"ok": True}
-
-
-def _run_all_checks():
-    check_products()
-    check_catalog_prices()
-    scan_radars()
-
-
-def _periodic_checks():
-    while True:
-        time.sleep(CHECK_INTERVAL_SECONDS)
-        try:
-            _run_all_checks()
-        except Exception as error:
-            print(f"❌ Periyodik fiyat güncellemesi başarısız: {error}", flush=True)
-
-
-def main():
-    address = f"http://{HOST}:{PORT}"
-    print(f"Arayüz hazır: {address}", flush=True)
-    print(
-        f"Yerel katalog hazır; sonraki fiyat kontrolü 10 dakika içinde başlar. "
-        f"SQLite veritabanı: "
-        f"{database.DATABASE_FILE}",
-        flush=True,
-    )
-    print("Fiyatlar 10 dakikada bir güncellenir. Durdurmak için Ctrl+C.", flush=True)
-    if OPEN_BROWSER:
-        webbrowser.open(address)
-    uvicorn.run(app, host=HOST, port=PORT)
-
-
-if __name__ == "__main__":
-    main()
+@app.get("/{full_path:path}")
+def spa_fallback(full_path: str) -> FileResponse:
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API rotası bulunamadı")
+    if full_path in {"style.css", "app.js"}:
+        requested_file = ROOT / full_path
+        return FileResponse(requested_file)
+    return FileResponse(INDEX_FILE)
