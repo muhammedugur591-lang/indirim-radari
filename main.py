@@ -14,7 +14,7 @@ from copy import deepcopy
 from contextlib import asynccontextmanager
 from json import JSONDecodeError
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from html import unescape
 from pathlib import Path
@@ -29,6 +29,7 @@ from urllib.parse import (
 )
 
 import uvicorn
+import database
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -41,7 +42,7 @@ OPEN_BROWSER = os.environ.get("OPEN_BROWSER", "1").strip().lower() not in {
     "false",
     "no",
 }
-CHECK_INTERVAL_SECONDS = 60 * 60
+CHECK_INTERVAL_SECONDS = 10 * 60
 MAX_SEARCH_RESULTS = 50
 HTTP_TIMEOUT_SECONDS = 12
 STORE_SCAN_TIMEOUT_SECONDS = 36
@@ -55,8 +56,6 @@ HTTP_HEADERS = {
 }
 ALL_STORES = "all"
 ALL_FILTERS = "Tümünü Seç"
-PRICE_HISTORY_LIMIT = 250
-
 ROOT = Path(__file__).resolve().parent
 PRODUCTS_FILE = ROOT / "products.json"
 RADARS_FILE = ROOT / "radars.json"
@@ -451,69 +450,48 @@ FALLBACK_PRICE_SELECTORS = (
 )
 
 
-def _initial_price_history(entry, price_key, timestamp_key):
-    try:
-        price = float(entry.get(price_key))
-    except (TypeError, ValueError, OverflowError):
-        return []
-    if not math.isfinite(price) or price <= 0:
-        return []
-    timestamp = entry.get(timestamp_key) or datetime.now().astimezone().isoformat(timespec="milliseconds")
-    return [{"timestamp": timestamp, "price": price}]
-
-
 def load_products():
     with PRODUCTS_LOCK:
-        if not PRODUCTS_FILE.exists():
-            save_products([])
-        try:
-            products = json.loads(PRODUCTS_FILE.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as error:
-            raise RuntimeError(f"{PRODUCTS_FILE.name} okunamadı: {error}") from error
+        database.initialize(
+            {
+                "products": PRODUCTS_FILE,
+                "radars": RADARS_FILE,
+                "offers": OFFERS_FILE,
+            }
+        )
+        products = database.load_records("products")
         if not isinstance(products, list):
-            raise RuntimeError(f"{PRODUCTS_FILE.name} bir ürün listesi olmalıdır.")
-        changed = False
+            raise RuntimeError("products veritabanı kaydı bir liste olmalıdır.")
         for product in products:
             if (
                 not isinstance(product, dict)
                 or not isinstance(product.get("id"), str)
                 or not _valid_product_url(product.get("url"))
             ):
-                raise RuntimeError(f"{PRODUCTS_FILE.name} geçersiz bir ürün içeriyor.")
+                raise RuntimeError("products veritabanında geçersiz ürün var.")
             try:
                 target = float(product.get("target"))
             except (TypeError, ValueError, OverflowError) as error:
                 raise RuntimeError(
-                    f"{PRODUCTS_FILE.name} geçersiz bir hedef fiyat içeriyor."
+                    "products veritabanında geçersiz hedef fiyat var."
                 ) from error
             if not math.isfinite(target) or target <= 0:
                 raise RuntimeError(
-                    f"{PRODUCTS_FILE.name} geçersiz bir hedef fiyat içeriyor."
+                    "products veritabanında geçersiz hedef fiyat var."
                 )
-            history = product.get("price_history")
-            if not isinstance(history, list):
-                history = []
-            if not history:
-                history = _initial_price_history(product, "current_price", "last_checked")
-            if product.get("price_history") != history:
-                product["price_history"] = history
-                changed = True
-        if changed:
-            save_products(products)
         return products
 
 
 def save_products(products):
     with PRODUCTS_LOCK:
-        temporary_file = PRODUCTS_FILE.with_suffix(".json.tmp")
-        try:
-            temporary_file.write_text(
-                json.dumps(products, ensure_ascii=False, indent=2) + "\n",
-                encoding="utf-8",
-            )
-            temporary_file.replace(PRODUCTS_FILE)
-        except OSError as error:
-            raise RuntimeError(f"{PRODUCTS_FILE.name} kaydedilemedi: {error}") from error
+        database.initialize(
+            {
+                "products": PRODUCTS_FILE,
+                "radars": RADARS_FILE,
+                "offers": OFFERS_FILE,
+            }
+        )
+        database.save_records("products", products)
 
 
 def _price_from_token(token):
@@ -810,9 +788,15 @@ def _append_price_history(entry, price, recorded_at=None):
     history = entry.get("price_history")
     if not isinstance(history, list):
         history = []
-    timestamp = recorded_at or datetime.now().astimezone().isoformat(timespec="milliseconds")
-    history.append({"timestamp": timestamp, "price": float(price)})
-    return history[-PRICE_HISTORY_LIMIT:]
+    timestamp = recorded_at or datetime.now().astimezone().isoformat(timespec="minutes")
+    try:
+        observed_at = datetime.fromisoformat(
+            str(timestamp).replace("Z", "+00:00")
+        ).strftime("%Y-%m-%d %H:%M")
+    except ValueError:
+        observed_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M")
+    history.append({"date": observed_at, "price": float(price)})
+    return history
 
 
 def _detect_shock_drop(previous_offer, current_price, radar, checked_at):
@@ -901,28 +885,41 @@ def check_products():
 
 def _load_json_list(path, lock):
     with lock:
-        if not path.exists():
-            _save_json_list(path, [], lock)
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as error:
-            raise RuntimeError(f"{path.name} okunamadı: {error}") from error
+        database.initialize(
+            {
+                "products": PRODUCTS_FILE,
+                "radars": RADARS_FILE,
+                "offers": OFFERS_FILE,
+            }
+        )
+        collection = {
+            RADARS_FILE: "radars",
+            OFFERS_FILE: "offers",
+        }.get(path)
+        if collection is None:
+            raise RuntimeError(f"{path.name} için veritabanı koleksiyonu bulunamadı.")
+        data = database.load_records(collection)
         if not isinstance(data, list):
-            raise RuntimeError(f"{path.name} bir liste olmalıdır.")
+            raise RuntimeError(f"{collection} veritabanı kaydı bir liste olmalıdır.")
         return data
 
 
 def _save_json_list(path, entries, lock):
     with lock:
-        temporary_file = path.with_suffix(".json.tmp")
-        try:
-            temporary_file.write_text(
-                json.dumps(entries, ensure_ascii=False, indent=2) + "\n",
-                encoding="utf-8",
-            )
-            temporary_file.replace(path)
-        except OSError as error:
-            raise RuntimeError(f"{path.name} kaydedilemedi: {error}") from error
+        database.initialize(
+            {
+                "products": PRODUCTS_FILE,
+                "radars": RADARS_FILE,
+                "offers": OFFERS_FILE,
+            }
+        )
+        collection = {
+            RADARS_FILE: "radars",
+            OFFERS_FILE: "offers",
+        }.get(path)
+        if collection is None:
+            raise RuntimeError(f"{path.name} için veritabanı koleksiyonu bulunamadı.")
+        database.save_records(collection, entries)
         if path == OFFERS_FILE:
             with PRODUCT_DATABASE_LOCK:
                 PRODUCT_DATABASE[:] = deepcopy(entries)
@@ -977,14 +974,6 @@ def load_offers():
     for offer in offers:
         if not isinstance(offer, dict):
             continue
-        history = offer.get("price_history")
-        if not isinstance(history, list):
-            history = []
-        if not history:
-            history = _initial_price_history(offer, "price", "last_seen")
-        if offer.get("price_history") != history:
-            offer["price_history"] = history
-            changed = True
         is_discounted = isinstance(offer.get("shock_alert"), dict)
         if offer.get("is_discounted") != is_discounted:
             offer["is_discounted"] = is_discounted
@@ -2112,6 +2101,13 @@ def _valid_product_url(value):
 
 @asynccontextmanager
 async def lifespan(_application):
+    database.initialize(
+        {
+            "products": PRODUCTS_FILE,
+            "radars": RADARS_FILE,
+            "offers": OFFERS_FILE,
+        }
+    )
     load_products()
     load_radars()
     load_offers()
@@ -2177,13 +2173,19 @@ def get_price_history(collection_name: str, entry_id: str):
         entry = next((item for item in collection if item.get("id") == entry_id), None)
         if entry is None:
             raise HTTPException(status_code=404, detail="Ürün geçmişi bulunamadı.")
-        history = entry.get("price_history", [])
-        if not isinstance(history, list):
-            history = []
+        cutoff = (
+            datetime.now().astimezone() - timedelta(days=366)
+        ).strftime("%Y-%m-%d %H:%M")
+        history = database.load_price_history(
+            collection_name,
+            entry_id,
+            since=cutoff,
+        )
         return {
             "id": entry_id,
             "title": entry.get("title") or entry.get("url") or "Ürün",
             "price_history": history,
+            "current_price": entry.get("current_price", entry.get("price")),
         }
     except RuntimeError as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
@@ -2306,7 +2308,16 @@ def get_index():
 
 @app.get("/index.html")
 def get_index_file():
-    return _serve_static_file("index.html", "text/html; charset=utf-8")
+    return _serve_static_file("index.html", "text/html; charset=utf-8"    )
+
+
+@app.get("/style.css")
+def get_stylesheet():
+    return FileResponse(
+        ROOT / "style.css",
+        media_type="text/css",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
 
 
 @app.get("/config.js")
@@ -2643,14 +2654,21 @@ def _run_all_checks():
 def _periodic_checks():
     while True:
         time.sleep(CHECK_INTERVAL_SECONDS)
-        _run_all_checks()
+        try:
+            _run_all_checks()
+        except Exception as error:
+            print(f"❌ Periyodik fiyat güncellemesi başarısız: {error}", flush=True)
 
 
 def main():
     address = f"http://{HOST}:{PORT}"
     print(f"Arayüz hazır: {address}", flush=True)
-    print(f"İlk fiyat kontrolü arka planda başlatıldı. Ürün listesi: {PRODUCTS_FILE}", flush=True)
-    print("Ürün eklemeleri products.json dosyasına kaydedilir. Durdurmak için Ctrl+C.", flush=True)
+    print(
+        f"İlk fiyat kontrolü arka planda başlatıldı. SQLite veritabanı: "
+        f"{database.DATABASE_FILE}",
+        flush=True,
+    )
+    print("Fiyatlar 10 dakikada bir güncellenir. Durdurmak için Ctrl+C.", flush=True)
     if OPEN_BROWSER:
         webbrowser.open(address)
     uvicorn.run(app, host=HOST, port=PORT)

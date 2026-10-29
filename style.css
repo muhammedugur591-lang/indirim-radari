@@ -1,0 +1,251 @@
+.deal-card {
+  grid-template-columns: 96px minmax(0, 1fr) minmax(150px, auto);
+  gap: 20px;
+  min-height: 132px;
+  padding: 18px 20px;
+  color: #34443a;
+  background: #fff;
+  border-color: #e4e9e5;
+  border-radius: 12px;
+  box-shadow: 0 2px 9px #10251a0a;
+}
+
+.deal-card .product-thumbnail {
+  width: 96px;
+  height: 96px;
+  background: #fff;
+  border-color: #edf0ed;
+}
+
+.deal-title {
+  color: #263b30;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.deal-card .store-badge {
+  color: #465a4d;
+  background: #f6f8f6;
+  border-color: #e4e9e5;
+}
+
+.deal-card .radar-status {
+  color: #738078;
+}
+
+.deal-foot .store-badge:first-child {
+  color: #286440;
+  background: #eef7ef;
+  border-color: #dcebdd;
+}
+
+.deal-price {
+  color: #17653c;
+  font-size: 23px;
+  letter-spacing: -.6px;
+}
+
+.deal-budget {
+  color: #718078;
+}
+
+.seller-link {
+  min-height: 38px;
+  margin-top: 10px;
+  padding-inline: 16px;
+  color: #fff;
+  background: #17653c;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.seller-link:hover {
+  background: #0f512f;
+}
+
+.deal-card.is-discounted {
+  border-color: #acd9b8;
+  background: #fbfffb;
+}
+
+.history-dialog {
+  width: min(840px, calc(100% - 28px));
+  max-width: 840px;
+  color: #24352b;
+  background: #fff;
+  border-color: #e4e9e5;
+  border-radius: 14px;
+  box-shadow: 0 24px 80px #10251a30;
+}
+
+.history-dialog::backdrop {
+  background: #14251bcc;
+  backdrop-filter: blur(3px);
+}
+
+.history-head {
+  align-items: start;
+  padding: 24px 26px 18px;
+  border-color: #edf0ed;
+}
+
+.history-dialog .eyebrow {
+  margin-bottom: 7px;
+  color: #318254;
+}
+
+.history-title {
+  max-width: 700px;
+  color: #20352a;
+  font-size: 21px;
+  letter-spacing: -.4px;
+  white-space: normal;
+}
+
+.history-subtitle {
+  margin: 6px 0 0;
+  color: #718078;
+  font-size: 13px;
+}
+
+.history-close {
+  color: #53645a;
+  background: #f7f9f7;
+}
+
+.history-content {
+  min-height: 0;
+  padding: 20px 26px 26px;
+}
+
+.history-periods {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.period-button {
+  min-height: 39px;
+  color: #526259;
+  background: #fff;
+  border: 1px solid #dfe6e1;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.period-button:hover,
+.period-button.is-selected {
+  color: #17653c;
+  background: #eff8f1;
+  border-color: #8bc59b;
+}
+
+.history-chart-wrap {
+  position: relative;
+  height: 310px;
+  padding: 8px 0 0;
+}
+
+.history-chart-wrap canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.history-stats > div {
+  display: grid;
+  gap: 8px;
+  min-height: 76px;
+  padding: 13px 15px;
+  background: #f7f9f7;
+  border: 1px solid #e8ede9;
+  border-radius: 9px;
+}
+
+.history-stats span {
+  color: #718078;
+  font-size: 11px;
+}
+
+.history-stats strong {
+  color: #25392d;
+  font-size: 17px;
+}
+
+.history-insight {
+  min-height: 44px;
+  margin: 13px 0 0;
+  padding: 13px 15px;
+  color: #20643b;
+  background: #eaf7ed;
+  border: 1px solid #cce8d2;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.history-insight:empty {
+  display: none;
+}
+
+@media (max-width: 680px) {
+  .deal-card {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .deal-card .product-thumbnail {
+    width: 64px;
+    height: 64px;
+  }
+
+  .deal-card > div:last-child {
+    grid-column: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 9px;
+  }
+
+  .deal-price {
+    font-size: 19px;
+  }
+
+  .seller-link {
+    margin-top: 0;
+  }
+
+  .history-head {
+    padding: 18px 16px 14px;
+  }
+
+  .history-content {
+    padding: 14px 16px 18px;
+  }
+
+  .history-title {
+    font-size: 17px;
+  }
+
+  .history-subtitle {
+    font-size: 11px;
+  }
+
+  .history-chart-wrap {
+    height: 250px;
+  }
+
+  .history-stats {
+    grid-template-columns: 1fr;
+  }
+}

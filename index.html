@@ -203,6 +203,7 @@
     }
     @media (prefers-reduced-motion: reduce) { .deal-card.shock-card { animation: none; } }
   </style>
+  <link rel="stylesheet" href="./style.css?v=2">
 </head>
 <body>
   <header class="shell topbar">
@@ -318,7 +319,7 @@
         </section>
       </div>
     </section>
-    <p class="footnote">Fiyat ve arama kontrolleri bu bilgisayardaki Python sunucusunda çalışır. Mağazalar otomatik erişimi kısıtlayabilir; böyle bir durumda radar kartında mağaza yanıtı gösterilir.</p>
+    <p class="footnote">Ürün kataloğu ve fiyat geçmişi SQLite veritabanında tutulur; mağaza fiyatları 10 dakikada bir arka planda güncellenir. Mağazalar otomatik erişimi kısıtlayabilir.</p>
   </main>
   <dialog class="radar-edit-dialog" id="radarEditDialog" aria-labelledby="radarEditTitle">
     <div class="radar-edit-head">
@@ -329,12 +330,30 @@
   </dialog>
   <dialog class="history-dialog" id="historyDialog" aria-labelledby="historyTitle">
     <div class="history-head">
-      <div><p class="eyebrow">Fiyat takibi</p><div class="history-title" id="historyTitle">Fiyat Geçmişi</div></div>
+      <div>
+        <p class="eyebrow">Ürün fiyat analizi</p>
+        <h2 class="history-title" id="historyTitle">Ürün Fiyat Analizi</h2>
+        <p class="history-subtitle" id="historySubtitle">Ürünün son 6 ay fiyat değişim grafiği</p>
+      </div>
       <button class="icon-button history-close" id="historyClose" type="button" aria-label="Grafiği kapat">×</button>
     </div>
     <div class="history-content">
       <p class="history-message" id="historyMessage" role="status">Fiyat geçmişi yükleniyor...</p>
-      <canvas id="historyChart" aria-label="Zaman içindeki fiyat grafiği"></canvas>
+      <div class="history-periods" role="group" aria-label="Grafik zaman aralığı">
+        <button class="period-button" type="button" data-period="1y">1 Yıl</button>
+        <button class="period-button is-selected" type="button" data-period="6m">6 Ay</button>
+        <button class="period-button" type="button" data-period="1m">1 Ay</button>
+        <button class="period-button" type="button" data-period="1w">1 Hafta</button>
+      </div>
+      <div class="history-chart-wrap">
+        <canvas id="historyChart" aria-label="Zaman içindeki fiyat grafiği"></canvas>
+      </div>
+      <section class="history-stats" aria-label="Dönem fiyat istatistikleri">
+        <div><span>Dönem İçi En Yüksek Fiyat</span><strong id="historyHighest">—</strong></div>
+        <div><span>Dönem İçi En Düşük Fiyat</span><strong id="historyLowest">—</strong></div>
+        <div><span>Şu Andaki Fiyat</span><strong id="historyCurrent">—</strong></div>
+      </section>
+      <p class="history-insight" id="historyInsight" role="status"></p>
     </div>
   </dialog>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
@@ -398,6 +417,10 @@
       panel_type: []
     };
     let historyChart = null;
+    let activeHistoryTitle = "Ürün";
+    let activePriceHistory = [];
+    let activeCurrentPrice = null;
+    let activeHistoryPeriod = "6m";
 
     async function requestJson(path, options = {}, onResponse = null) {
       const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -840,76 +863,147 @@
       );
     }
 
-    async function showPriceHistory(type, id) {
-      historyDialog.showModal();
-      historyMessage.textContent = "Fiyat geçmişi yükleniyor...";
-      historyMessage.classList.remove("hidden");
+    const HISTORY_PERIODS = {
+      "1y": { label: "1 Yıl", subtract: (date) => date.setFullYear(date.getFullYear() - 1) },
+      "6m": { label: "6 Ay", subtract: (date) => date.setMonth(date.getMonth() - 6) },
+      "1m": { label: "1 Ay", subtract: (date) => date.setMonth(date.getMonth() - 1) },
+      "1w": { label: "1 Hafta", subtract: (date) => date.setDate(date.getDate() - 7) }
+    };
+
+    function renderPriceHistory() {
+      const period = HISTORY_PERIODS[activeHistoryPeriod] || HISTORY_PERIODS["6m"];
+      document.querySelector("#historyTitle").textContent = `${activeHistoryTitle} Fiyat Analizi`;
+      document.querySelector("#historySubtitle").textContent =
+        `${activeHistoryTitle} son ${period.label.toLocaleLowerCase("tr-TR")} fiyat değişim grafiği`;
+      document.querySelectorAll(".period-button").forEach((button) => {
+        const selected = button.dataset.period === activeHistoryPeriod;
+        button.classList.toggle("is-selected", selected);
+        button.setAttribute("aria-pressed", String(selected));
+      });
+
+      const cutoff = new Date();
+      period.subtract(cutoff);
+      const history = activePriceHistory
+        .map((point) => ({
+          ...point,
+          observedAt: new Date((point.date || point.timestamp || "").replace(" ", "T"))
+        }))
+        .filter((point) =>
+          Number.isFinite(point.price)
+          && Number.isFinite(point.observedAt.getTime())
+          && point.observedAt >= cutoff
+        )
+        .sort((left, right) => left.observedAt - right.observedAt);
+      const prices = history.map((point) => Number(point.price));
+      const currentPrice = Number.isFinite(activeCurrentPrice)
+        ? activeCurrentPrice
+        : prices.at(-1);
+      const highest = prices.length ? Math.max(...prices) : null;
+      const lowest = prices.length ? Math.min(...prices) : null;
+      document.querySelector("#historyHighest").textContent =
+        highest === null ? "—" : `${highest.toLocaleString("tr-TR")} TL`;
+      document.querySelector("#historyLowest").textContent =
+        lowest === null ? "—" : `${lowest.toLocaleString("tr-TR")} TL`;
+      document.querySelector("#historyCurrent").textContent =
+        Number.isFinite(currentPrice) ? `${currentPrice.toLocaleString("tr-TR")} TL` : "—";
+      document.querySelector("#historyInsight").textContent = !prices.length
+        ? `Bu döneme ait fiyat kaydı bulunmuyor. Daha uzun bir aralık seçebilir veya sonraki fiyat güncellemesini bekleyebilirsin.`
+        : currentPrice <= lowest
+          ? `Şu andaki fiyat son ${period.label.toLocaleLowerCase("tr-TR")} döneminin en ucuz fiyatı!`
+          : `Bu dönemin en düşük fiyatı ${lowest.toLocaleString("tr-TR")} TL olarak kaydedildi.`;
+
       if (historyChart) {
         historyChart.destroy();
         historyChart = null;
       }
-      try {
-        const data = await requestJson(`/api/history/${type}/${encodeURIComponent(id)}`);
-        document.querySelector("#historyTitle").textContent = data.title || "Fiyat Geçmişi";
-        const history = Array.isArray(data.price_history) ? data.price_history : [];
-        if (typeof Chart === "undefined") {
-          throw new Error("Grafik kütüphanesi yüklenemedi. İnternet bağlantısını kontrol edin.");
-        }
-        if (!history.length) {
-          historyMessage.textContent = "Henüz fiyat geçmişi yok. İlk başarılı taramadan sonra grafik oluşacak.";
-          return;
-        }
-        historyMessage.classList.add("hidden");
-        const prices = history.map((point) => Number(point.price));
-        const isDownward = prices.length > 1 && prices[prices.length - 1] <= prices[0];
-        const lineColor = isDownward ? "#a4df4c" : "#ff9a8d";
-        historyChart = new Chart(document.querySelector("#historyChart"), {
-          type: "line",
-          data: {
-            labels: history.map((point) => new Date(point.timestamp).toLocaleString("tr-TR")),
-            datasets: [{
-              label: "Ürün fiyatı (TL)",
-              data: prices,
-              borderColor: lineColor,
-              backgroundColor: isDownward ? "#a4df4c18" : "#ff9a8d18",
-              pointBackgroundColor: lineColor,
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              borderWidth: 2,
-              fill: true,
-              tension: 0.28
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { intersect: false, mode: "index" },
-            plugins: {
-              legend: { labels: { color: getComputedStyle(root).getPropertyValue("--muted") } },
-              tooltip: {
-                callbacks: {
-                  label: (context) => ` ${Number(context.parsed.y).toLocaleString("tr-TR")} TL`
-                }
-              }
-            },
-            scales: {
-              x: { ticks: { color: getComputedStyle(root).getPropertyValue("--muted"), maxRotation: 35, minRotation: 0 }, grid: { color: "#8995a018" } },
-              y: {
-                beginAtZero: false,
-                ticks: {
-                  color: getComputedStyle(root).getPropertyValue("--muted"),
-                  callback: (value) => `${Number(value).toLocaleString("tr-TR")} TL`
-                },
-                grid: { color: "#8995a018" }
+      historyMessage.classList.toggle("hidden", Boolean(prices.length));
+      if (!prices.length) {
+        historyMessage.textContent = "Bu dönem için fiyat geçmişi bulunamadı.";
+        return;
+      }
+      if (typeof Chart === "undefined") {
+        historyMessage.textContent = "Grafik kütüphanesi yüklenemedi. İnternet bağlantısını kontrol edin.";
+        historyMessage.classList.remove("hidden");
+        return;
+      }
+      historyChart = new Chart(document.querySelector("#historyChart"), {
+        type: "line",
+        data: {
+          labels: history.map((point) => point.observedAt.toLocaleString("tr-TR")),
+          datasets: [{
+            label: "Ürün fiyatı (TL)",
+            data: prices,
+            borderColor: "#4b82c3",
+            borderDash: [6, 5],
+            backgroundColor: "#4b82c311",
+            pointBackgroundColor: prices.map((price, index) =>
+              index === 0 || price <= prices[index - 1] ? "#2674c8" : "#dc6262"
+            ),
+            pointBorderColor: "#fff",
+            pointBorderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            borderWidth: 2,
+            fill: false,
+            tension: 0.25
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: "index" },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (context) => ` ${Number(context.parsed.y).toLocaleString("tr-TR")} TL`
               }
             }
+          },
+          scales: {
+            x: {
+              ticks: { color: "#718078", maxRotation: 35, minRotation: 0 },
+              grid: { color: "#8995a018" }
+            },
+            y: {
+              beginAtZero: false,
+              ticks: {
+                color: "#718078",
+                callback: (value) => `${Number(value).toLocaleString("tr-TR")} TL`
+              },
+              grid: { color: "#8995a018" }
+            }
           }
-        });
+        }
+      });
+    }
+
+    async function showPriceHistory(type, id) {
+      historyDialog.showModal();
+      historyMessage.textContent = "Fiyat geçmişi yükleniyor...";
+      historyMessage.classList.remove("hidden");
+      activeHistoryPeriod = "6m";
+      activePriceHistory = [];
+      activeCurrentPrice = null;
+      try {
+        const data = await requestJson(`/api/history/${type}/${encodeURIComponent(id)}`);
+        activeHistoryTitle = data.title || "Ürün";
+        activePriceHistory = Array.isArray(data.price_history) ? data.price_history : [];
+        const currentPrice = Number(data.current_price);
+        activeCurrentPrice = Number.isFinite(currentPrice) ? currentPrice : null;
+        renderPriceHistory();
       } catch (error) {
         historyMessage.textContent = `Fiyat geçmişi açılamadı: ${error.message}`;
         historyMessage.classList.remove("hidden");
       }
     }
+
+    document.querySelectorAll(".period-button").forEach((button) => {
+      button.addEventListener("click", () => {
+        activeHistoryPeriod = button.dataset.period;
+        renderPriceHistory();
+      });
+    });
 
     function createHistoryButton(type, id) {
       const button = document.createElement("button");
@@ -1261,10 +1355,8 @@
         meta.append(seen);
         content.append(title, meta);
         const priceColumn = document.createElement("div");
-        const history = Array.isArray(offer.price_history) ? offer.price_history : [];
         const previousPrice = Number(
-          offer.shock_alert?.previous_price
-          ?? (history.length > 1 ? history[history.length - 2]?.price : NaN)
+          offer.shock_alert?.previous_price ?? offer.previous_price
         );
         if (Number.isFinite(previousPrice) && previousPrice > Number(offer.price)) {
           const oldPrice = document.createElement("del");

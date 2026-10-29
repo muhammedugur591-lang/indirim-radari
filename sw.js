@@ -1,4 +1,4 @@
-const CACHE_NAME = "indirim-radari-v14";
+const CACHE_NAME = "indirim-radari-v16";
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
