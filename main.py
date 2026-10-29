@@ -402,6 +402,90 @@ CATEGORY_CATALOG = {
     },
 }
 
+CATEGORY_CATALOG.update({
+    "Beyaz Eşya": dict.fromkeys((
+        "Buzdolabı", "Çamaşır Makinesi", "Kurutma Makinesi", "Bulaşık Makinesi",
+        "Fırın", "Ocak", "Davlumbaz", "Derin Dondurucu", "Klima",
+        "Şofben & Termosifon",
+    ), ()),
+    "Küçük Ev Aletleri": dict.fromkeys((
+        "Robot Süpürge", "Elektrikli Süpürge", "Ütü", "Kahve Makinesi",
+        "Airfryer", "Blender", "Mutfak Robotu", "Tost Makinesi",
+        "Su Arıtma Cihazı", "Vantilatör & Isıtıcı",
+    ), ()),
+    "Ev & Yaşam": dict.fromkeys((
+        "Oturma Grubu", "Yatak Odası", "Masa & Sandalye", "Ev Tekstili",
+        "Aydınlatma", "Halı & Kilim", "Perde", "Dekorasyon",
+        "Banyo Ürünleri", "Bahçe Mobilyası",
+    ), ()),
+    "Mutfak & Sofra": dict.fromkeys((
+        "Tencere & Tava", "Yemek Takımı", "Çatal Kaşık Bıçak", "Bardak & Kupa",
+        "Saklama Kabı", "Mutfak Gereçleri", "Masa Örtüsü", "Su Sebili",
+    ), ()),
+    "Moda & Giyim": dict.fromkeys((
+        "Kadın Giyim", "Erkek Giyim", "Çocuk Giyim", "Mont & Kaban",
+        "Takım Elbise", "İç Giyim", "Pijama", "Çorap",
+    ), ()),
+    "Ayakkabı & Çanta": dict.fromkeys((
+        "Kadın Ayakkabı", "Erkek Ayakkabı", "Spor Ayakkabı", "Çocuk Ayakkabı",
+        "Bot & Çizme", "Sırt Çantası", "El Çantası", "Valiz",
+    ), ()),
+    "Kozmetik & Kişisel Bakım": dict.fromkeys((
+        "Parfüm", "Cilt Bakımı", "Makyaj", "Saç Bakımı", "Tıraş & Epilasyon",
+        "Ağız Bakımı", "Deodorant", "Kişisel Bakım Cihazları",
+    ), ()),
+    "Anne & Bebek": dict.fromkeys((
+        "Bebek Arabası", "Oto Koltuğu", "Bebek Bezi", "Bebek Beslenme",
+        "Bebek Telsizi", "Bebek Odası", "Bebek Bakım & Banyo", "Emzirme Ürünleri",
+    ), ()),
+    "Oyuncak & Hobi": dict.fromkeys((
+        "Eğitici Oyuncak", "Yapı Oyuncağı", "Kutu Oyunu", "Puzzle",
+        "Oyuncak Bebek", "Uzaktan Kumandalı Oyuncak", "Model & Maket",
+        "Koleksiyon", "Hobi Malzemeleri",
+    ), ()),
+    "Kitap, Kırtasiye & Ofis": dict.fromkeys((
+        "Kitap", "E-kitap Okuyucu", "Kırtasiye", "Yazıcı & Tarayıcı",
+        "Kartuş & Toner", "Ofis Mobilyası", "Ofis Aksesuarları", "Okul Çantası",
+    ), ()),
+    "Spor & Outdoor": dict.fromkeys((
+        "Fitness", "Koşu", "Bisiklet", "Kamp", "Outdoor Giyim",
+        "Takım Sporları", "Su Sporları", "Spor Aletleri", "Spor Besinleri",
+    ), ()),
+    "Otomotiv & Motosiklet": dict.fromkeys((
+        "Oto Aksesuarları", "Lastik", "Akü", "Motor Yağı", "Yedek Parça",
+        "Motosiklet Kaskı", "Motosiklet Ekipmanı", "Araç İçi Elektronik",
+        "Oto Bakım & Temizlik",
+    ), ()),
+    "Market & Gıda": dict.fromkeys((
+        "Kahve & Çay", "Atıştırmalık", "İçecek", "Temel Gıda", "Kahvaltılık",
+        "Organik & Diyet Ürünleri", "Ev Temizlik Ürünleri", "Kağıt Ürünleri",
+    ), ()),
+    "Pet Shop": dict.fromkeys((
+        "Kedi Maması", "Köpek Maması", "Kedi Kumu", "Kuş Ürünleri", "Akvaryum",
+        "Pet Oyuncakları", "Pet Bakım & Sağlık",
+    ), ()),
+    "Sağlık & Medikal": dict.fromkeys((
+        "Vitamin & Takviye", "Medikal Cihaz", "Termometre", "Ortopedik Ürün",
+        "İlk Yardım", "Masaj Aleti", "Gözlük & Lens",
+    ), ()),
+    "Takı, Saat & Aksesuar": dict.fromkeys((
+        "Kol Saati", "Takı", "Güneş Gözlüğü", "Cüzdan", "Valiz & Seyahat",
+        "Şemsiye",
+    ), ()),
+    "Müzik & Enstrüman": dict.fromkeys((
+        "Gitar", "Klavye & Piyano", "Davul & Perküsyon", "Mikrofon",
+        "Ses & Stüdyo Ekipmanı", "DJ Ekipmanı", "Enstrüman Aksesuarları",
+    ), ()),
+    "Yapı Market & Bahçe": dict.fromkeys((
+        "El Aletleri", "Elektrikli El Aletleri", "Boya", "Hırdavat",
+        "Bahçe Makineleri", "Sulama", "Yapı Malzemeleri", "Güvenlik & Alarm",
+    ), ()),
+    "Temizlik & Ev Bakımı": dict.fromkeys((
+        "Temizlik Ürünleri", "Hava Temizleyici", "Su Arıtma & Filtre",
+        "Buharlı Temizleyici", "Çamaşır & Kurutma Aksesuarları",
+    ), ()),
+})
+
 MONITOR_FILTERS = {
     "refresh_rate": (
         ALL_FILTERS,
