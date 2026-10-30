@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 LOGGER = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parent
 CATALOG_FILE = ROOT / "urunler.json"
+AMAZON_CATALOG_FILE = ROOT / "urunler_amazon.json"
 IMAGE_SUFFIXES = {".avif", ".jpg", ".jpeg", ".png", ".webp"}
 REFRESH_RATE_PATTERN = re.compile(r"(?<!\d)(\d{2,3})\s*(?:hz|hertz)\b", re.IGNORECASE)
 SCREEN_SIZE_PATTERN = re.compile(
@@ -149,11 +150,69 @@ def _normalize_product(item: dict) -> dict:
     }
 
 
+def _normalize_amazon_product(item: dict, product_id: int) -> dict:
+    title = str(item.get("title", "")).strip()
+    category_name = str(item.get("category", "")).strip()
+    brand = str(item.get("brand", "")).strip()
+    image_url = item.get("main_image")
+    offers = item.get("stores")
+    if not title or category_name != "Telefon" or not brand:
+        raise ValueError(f"Amazon ürünü temel alanları eksik: {title}")
+    if not _valid_product_image(image_url):
+        raise ValueError(f"Amazon ürün görseli geçersiz: {title}")
+    if not isinstance(offers, list) or not offers:
+        raise ValueError(f"Amazon ürünü için teklif yok: {title}")
+
+    item_price = float(item.get("price") or 0)
+    if not math.isfinite(item_price) or item_price <= 0:
+        raise ValueError(f"Amazon ürün fiyatı geçersiz: {title}")
+
+    normalized_offers = []
+    for offer in offers:
+        offer_url = str(offer.get("product_url") or "").strip()
+        parsed_url = urlparse(offer_url)
+        amount = float(offer.get("price") or 0)
+        if (
+            offer.get("store_name") != "Amazon"
+            or parsed_url.scheme != "https"
+            or parsed_url.hostname != "www.amazon.com.tr"
+            or not math.isfinite(amount)
+            or amount <= 0
+            or amount != item_price
+        ):
+            raise ValueError(f"Amazon ürünü teklifi geçersiz: {title}")
+        normalized_offers.append(
+            {
+                "store_name": "Amazon",
+                "price": amount,
+                "old_price": amount,
+                "product_url": offer_url,
+            }
+        )
+
+    gallery = [image_url]
+    return {
+        "id": product_id,
+        "title": title,
+        "category_id": _category_id(category_name),
+        "category_name": category_name,
+        "brand": brand,
+        "image_url": image_url,
+        "image_gallery": gallery,
+        "description": "",
+        "tags": [],
+        "refresh_rate_hz": None,
+        "screen_size_inches": None,
+        "offers": normalized_offers,
+    }
+
+
 def seed_catalog(
     db: sqlite3.Connection,
     category_icons: dict[str, str],
     products: list[dict] | None = None,
 ) -> int:
+    load_default_catalog = products is None
     if products is None:
         try:
             with CATALOG_FILE.open(encoding="utf-8-sig") as source:
@@ -190,8 +249,34 @@ def seed_catalog(
             if offer["product_url"] not in known_urls
         )
 
+    amazon_products = []
+    if load_default_catalog:
+        try:
+            with AMAZON_CATALOG_FILE.open(encoding="utf-8-sig") as source:
+                amazon_products = json.load(source)
+        except (OSError, json.JSONDecodeError) as error:
+            raise RuntimeError(
+                f"Amazon kataloğu okunamadı: {AMAZON_CATALOG_FILE}"
+            ) from error
+        if not isinstance(amazon_products, list):
+            raise RuntimeError("urunler_amazon.json bir ürün listesi olmalıdır")
+
+    amazon_skipped = 0
+    first_amazon_id = max(normalized_by_id, default=0) + 1
+    for index, item in enumerate(amazon_products):
+        if not isinstance(item, dict):
+            raise RuntimeError("Amazon kataloğunda geçersiz ürün kaydı var")
+        if not all(key in item for key in ("brand", "main_image", "price", "stores")):
+            amazon_skipped += 1
+            continue
+        try:
+            product = _normalize_amazon_product(item, first_amazon_id + index)
+        except (KeyError, TypeError, ValueError) as error:
+            raise RuntimeError(f"Geçersiz Amazon katalog kaydı: {error}") from error
+        normalized_by_id[product["id"]] = product
+
     if not normalized_by_id:
-        raise RuntimeError("İçe aktarılabilecek geçerli Trendyol ürünü bulunamadı")
+        raise RuntimeError("İçe aktarılabilecek geçerli katalog ürünü bulunamadı")
 
     today = date.today().isoformat()
     db.execute("DELETE FROM price_history")
@@ -246,7 +331,7 @@ def seed_catalog(
                 offer["price"],
                 offer["product_url"],
                 0,
-                "Trendyol ürün sayfasından alınan güncel fiyat.",
+                f"{offer['store_name']} ürün sayfasından alınan son fiyat.",
             )
             for offer in offers
         )
@@ -274,24 +359,27 @@ def seed_catalog(
     )
 
     metadata = (
-        ("source", "Trendyol product pages"),
+        ("source", "Trendyol and Amazon product pages"),
         (
             "note",
-            "Fiyatlar Trendyol ürün sayfalarından taranan son TL fiyatlarıdır. "
+            "Fiyatlar Trendyol ve Amazon ürün sayfalarından alınan son TL fiyatlarıdır. "
             "Fiyat geçmişi tarama tarihinden itibaren birikir.",
         ),
         ("synced_at", datetime.now(timezone.utc).isoformat()),
         ("product_count", str(len(normalized_by_id))),
         ("offer_count", str(len(offer_rows))),
         ("unavailable_count", str(unavailable_count)),
+        ("amazon_unavailable_count", str(amazon_skipped)),
     )
     db.executemany(
         "INSERT INTO catalog_metadata (key, value) VALUES (?, ?)", metadata
     )
     LOGGER.info(
-        "Imported %s Trendyol products, %s direct offers; skipped %s unavailable links",
+        "Imported %s products from Trendyol and Amazon, %s direct offers; "
+        "skipped %s Trendyol and %s unavailable Amazon products",
         len(normalized_by_id),
         len(offer_rows),
         unavailable_count,
+        amazon_skipped,
     )
     return len(normalized_by_id)

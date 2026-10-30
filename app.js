@@ -5,7 +5,7 @@ const priceFormat = new Intl.NumberFormat("tr-TR", {
   maximumFractionDigits: 2,
   minimumFractionDigits: 0,
 });
-const stores = ["Trendyol"];
+const stores = ["Trendyol", "Amazon"];
 let activeChart;
 let refreshTimer;
 
@@ -40,8 +40,8 @@ function productCard(product) {
       <span class="product-brand">${escapeHtml(product.brand)} · ${escapeHtml(product.category_name || "")}</span>
       <a class="product-title" href="/urun/${product.id}" data-link>${escapeHtml(product.title)}</a>
       <div class="product-price-row"><strong>${price(product.current_lowest_price)}</strong>${product.old_price > product.current_lowest_price ? `<del>${price(product.old_price)}</del>` : ""}</div>
-      <small class="price-source-note">Trendyol güncel fiyatı</small>
-      <div class="product-card-bottom"><span>Trendyol fiyatı</span><a href="${escapeHtml(product.lowest_store_url)}" target="_blank" rel="noopener noreferrer" aria-label="Ürünü Trendyol'da aç">Ürüne git ↗</a></div>
+      <small class="price-source-note">${escapeHtml(product.lowest_store_name)} güncel fiyatı</small>
+      <div class="product-card-bottom"><span>${escapeHtml(product.lowest_store_name)} fiyatı</span><a href="${escapeHtml(product.lowest_store_url)}" target="_blank" rel="noopener noreferrer" aria-label="Ürünü ${escapeHtml(product.lowest_store_name)} mağazasında aç">Ürüne git ↗</a></div>
     </div>
   </article>`;
 }
@@ -58,7 +58,7 @@ async function renderHome() {
     <section class="hero">
       <div class="hero-copy"><span class="eyebrow"><span class="live-dot"></span> Akıllı alışverişin adresi</span>
         <h1>Aradığın ürün,<br><em>en iyi fiyatıyla.</em></h1>
-        <p>Trendyol'daki monitör fiyatlarını ve ürün özelliklerini keşfet.</p>
+        <p>Telefon ve monitör fiyatlarını mağazalar arasında karşılaştır.</p>
         <a class="button button-primary" href="/tum-kategoriler" data-link>Kataloğu keşfet <span>→</span></a>
       </div>
       <div class="hero-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="hero-device">⌕</div><span class="float-tag tag-one">↓ Fiyat alarmı</span><span class="float-tag tag-two">₺ Güncel fiyat</span></div>
@@ -75,7 +75,11 @@ async function renderHome() {
       <div class="section-heading"><div><span class="eyebrow">Senin için seçtik</span><h2>Popüler ürünler</h2></div><a href="/tum-kategoriler" data-link class="text-link">Kataloğun tamamı <span>→</span></a></div>
       ${productGrid(data.popular)}
     </section>
-    <p class="demo-disclaimer">${escapeHtml(data.catalog_note)} Kaynak: ${escapeHtml(data.catalog_source)}. Bağlantılar doğrudan Trendyol ürün sayfalarına gider.</p>`;
+    ${data.phones.length ? `<section class="catalog-section">
+      <div class="section-heading"><div><span class="eyebrow">Telefon kataloğu</span><h2>Telefon fırsatları</h2></div><a href="/kategori/telefon" data-link class="text-link">Tüm telefonlar <span>→</span></a></div>
+      ${productGrid(data.phones)}
+    </section>` : ""}
+    <p class="demo-disclaimer">${escapeHtml(data.catalog_note)} Kaynak: ${escapeHtml(data.catalog_source)}.</p>`;
 }
 
 async function renderCategories() {
@@ -106,7 +110,7 @@ function readFiltersFromUrl() {
 async function renderListing() {
   const filters = readFiltersFromUrl();
   if (filters.q) searchInput.value = filters.q;
-  const params = new URLSearchParams({ limit: "200", sort: filters.sort });
+  const params = new URLSearchParams({ limit: "500", sort: filters.sort });
   if (filters.q) params.set("q", filters.q);
   if (filters.category) params.set("category", filters.category);
   if (filters.min) params.set("min_price", filters.min);
@@ -152,9 +156,9 @@ async function renderListing() {
       }).join("")}</select></fieldset>` : ""}
       <fieldset><legend>Mağaza</legend><div class="check-list">${stores.map((store) => `<label class="check-option"><input type="radio" name="store-filter" value="${escapeHtml(store)}" ${filters.store === store ? "checked" : ""}><span>${escapeHtml(store)}</span></label>`).join("")}<label class="check-option"><input type="radio" name="store-filter" value="" ${!filters.store ? "checked" : ""}><span>Tüm mağazalar</span></label></div></fieldset>
       <fieldset><legend>Marka</legend><select id="brand-select" class="filter-select"><option value="">Tüm markalar</option>${brands.map((brand) => `<option value="${escapeHtml(brand)}" ${filters.brand === brand ? "selected" : ""}>${escapeHtml(brand)}</option>`).join("")}</select></fieldset>
-      <div class="demo-filter-note">Fiyatlar Trendyol ürün sayfalarından alınmıştır; zamanla değişebilir.</div>
+      <div class="demo-filter-note">Fiyatlar mağaza ürün sayfalarından alınmıştır; zamanla değişebilir.</div>
     </aside>
-    <section class="listing-results" aria-label="Ürün sonuçları"><div class="result-summary"><span><strong>${result.total}</strong> ürün</span><span>Trendyol · TL</span></div>${productGrid(result.items)}</section>
+    <section class="listing-results" aria-label="Ürün sonuçları"><div class="result-summary"><span><strong>${result.total}</strong> ürün</span><span>Trendyol ve Amazon · TL</span></div>${productGrid(result.items)}</section>
   </div>`;
   bindListingFilters();
 }
@@ -219,8 +223,8 @@ async function renderProduct(productId) {
       <div class="detail-image-wrap"><img class="detail-image" src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.title)}" data-title="${escapeHtml(product.title)}"></div>
       <div class="detail-copy"><span class="eyebrow">${escapeHtml(product.brand)} · Ürün fiyat karşılaştırması</span><h1>${escapeHtml(product.title)}</h1><p class="detail-description">${escapeHtml(product.description)}</p>
         ${tags.length ? `<div class="product-tags">${tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
-        <div class="detail-best-price"><span>En düşük Trendyol fiyatı</span><strong>${price(product.current_lowest_price)}</strong><small>Trendyol · güncel sayfa fiyatı</small></div>
-        <p class="detail-source-note">Fiyat ve ürün görselleri Trendyol ürün sayfasından alınmıştır. Fiyat zamanla değişebilir.</p>
+        <div class="detail-best-price"><span>En düşük güncel fiyat</span><strong>${price(product.current_lowest_price)}</strong><small>${escapeHtml(product.lowest_store_name)} · güncel sayfa fiyatı</small></div>
+        <p class="detail-source-note">Fiyat ve ürün görselleri mağaza ürün sayfalarından alınmıştır. Fiyat zamanla değişebilir.</p>
         <a class="button button-primary" href="#offers">Satıcı fiyatlarını karşılaştır <span>↓</span></a>
       </div>
     </section>
@@ -233,9 +237,9 @@ async function renderProduct(productId) {
         <div class="price-insight">✦ <strong id="price-insight-label">Fiyat geçmişi tarama tarihinden itibaren birikir</strong><span>Henüz uzun dönemli fiyat kaydı bulunmuyor.</span></div>
       </div>
     </section>
-    <section id="offers" class="offers-section"><div class="section-heading"><div><span class="eyebrow">Trendyol mağaza teklifleri</span><h2>Satıcı fiyatları</h2></div><span class="section-note">${product.offers.length} teklif listeleniyor</span></div>
-      <div class="offers-list">${product.offers.map((offer, index) => `<article class="offer-row"><span class="offer-rank">${index + 1}</span><div class="offer-store"><div class="store-logo">${escapeHtml(offer.store_name)}</div><a class="offer-url" href="${escapeHtml(offer.product_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(offer.product_url)}</a></div><strong class="offer-price">${price(offer.price)}</strong><a class="button button-store" href="${escapeHtml(offer.product_url)}" target="_blank" rel="noopener noreferrer">Trendyol'da gör ↗</a></article>`).join("")}</div>
-      <p class="demo-disclaimer">Fiyatlar Trendyol ürün sayfalarındaki mevcut tekliflerden alınmıştır. Satıcı bağlantıları doğrudan ürün sayfasını açar.</p>
+    <section id="offers" class="offers-section"><div class="section-heading"><div><span class="eyebrow">Mağaza teklifleri</span><h2>Satıcı fiyatları</h2></div><span class="section-note">${product.offers.length} teklif listeleniyor</span></div>
+      <div class="offers-list">${product.offers.map((offer, index) => `<article class="offer-row"><span class="offer-rank">${index + 1}</span><div class="offer-store"><div class="store-logo">${escapeHtml(offer.store_name)}</div><a class="offer-url" href="${escapeHtml(offer.product_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(offer.product_url)}</a></div><strong class="offer-price">${price(offer.price)}</strong><a class="button button-store" href="${escapeHtml(offer.product_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(offer.store_name)}'da gör ↗</a></article>`).join("")}</div>
+      <p class="demo-disclaimer">Fiyatlar mağaza ürün sayfalarındaki güncel tekliflerden alınmıştır. Satıcı bağlantıları doğrudan ürün sayfasını açar.</p>
     </section>`;
   drawPriceChart(initialHistory.points);
   document.querySelectorAll("[data-period]").forEach((button) => button.addEventListener("click", async () => {

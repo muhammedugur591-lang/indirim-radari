@@ -24,6 +24,7 @@ CATEGORY_ICONS = {
     "oyuncu-monitoru": "🎮",
     "4k-monitor": "🖥️",
     "oyuncu-masaustu-bilgisayari": "🖥️",
+    "telefon": "📱",
 }
 
 
@@ -141,7 +142,7 @@ def initialize_database() -> None:
     with connect() as db:
         initialize_schema(db)
         seeded_count = seed_catalog(db, CATEGORY_ICONS)
-        LOGGER.info("SQLite catalog initialized with %s Trendyol products", seeded_count)
+        LOGGER.info("SQLite catalog initialized with %s products", seeded_count)
 
 
 @asynccontextmanager
@@ -244,6 +245,10 @@ def get_home() -> dict:
         popular = db.execute(
             f"{select_card} ORDER BY p.rating DESC, p.id ASC LIMIT 24"
         ).fetchall()
+        phones = db.execute(
+            f"{select_card} WHERE p.category = 'telefon' "
+            "ORDER BY p.current_lowest_price ASC, p.id ASC LIMIT 12"
+        ).fetchall()
         deals = db.execute(
             f""" {select_card}
                  ORDER BY (p.old_price - p.current_lowest_price) / p.old_price DESC,
@@ -255,6 +260,7 @@ def get_home() -> dict:
         }
         return {
             "popular": [product_card(row) for row in popular],
+            "phones": [product_card(row) for row in phones],
             "deals": [product_card(row) for row in deals],
             "categories": _category_rows(db),
             "catalog_source": metadata.get("source", "Trendyol"),
